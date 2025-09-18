@@ -68,13 +68,10 @@
       let url = document.getElementById("recordedUrl").value.trim();
       if (!url) { alert("Please enter URL"); return; }
 
-      // Example RareStudy input always mapped to sec-prod-mediacdn.pw.live + master.mpd
-      // Replace master.mpd → master.m3u8
-      let finalMpd = "https://sec-prod-mediacdn.pw.live/779e5d43-b614-49fb-9c7e-8abb51541b77/master.mpd?URLPrefix=aHR0cHM6Ly9zZWMtcHJvZC1tZWRpYWNkbi5wdy5saXZlLzc3OWU1ZDQzLWI2MTQtNDlmYi05YzdlLThhYmI1MTU0MWI3Nw&Expires=1758180597&KeyName=pw-prod-key&Signature=JCuLGSAZRZd9c7BgcWruyc5hKDpafEd_bXQIFj-qNH4cvac5t4wFNYL6vtjc6A2RzWDe_rxk6B4aqGauRaOXAw";
+      // Agar .mpd link hai → usko .m3u8 me replace kar do
+      let m3u8Url = url.replace("master.mpd", "master.m3u8");
 
-      let m3u8Url = finalMpd.replace("master.mpd", "master.m3u8");
-
-      // Encode for proxy
+      // Encode karke proxy banaye
       finalLink = `https://learnwithpw-recorded.onrender.com/play?v=${encodeURIComponent(m3u8Url)}`;
 
       document.getElementById("previewRecorded").href = finalLink;
