@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LEARN WITH JBKRIYANSH</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f8f9fa; }
+    h1 { background: linear-gradient(90deg, #0066ff, #0099ff); color: white; padding: 15px; border-radius: 8px; }
+    .card { margin: 20px auto; padding: 20px; border-radius: 12px; max-width: 400px; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
+    input { width: 95%; padding: 15px; margin: 12px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+    button, a { display: block; width: 90%; margin: 8px auto; padding: 14px; border: none; border-radius: 8px; font-weight: bold; text-decoration: none; text-align: center; font-size: 15px; cursor: pointer; }
+    .live { background: #0066ff; color: white; }
+    .recorded { background: #ff922b; color: white; }
+    .copy { background: #28a745; color: white; }
+    .preview { background: #ffa94d; color: white; }
+    .refresh { background: #6c5ce7; color: white; }
+    .back { background: red; color: white; }
+    footer { margin-top: 20px; font-size: 13px; color: #555; }
+    footer span { color: red; }
+  </style>
+</head>
+<body>
+  <h1>LEARN WITH JBKRIYANSH</h1>
+
+  <div class="card">
+    <h3>Paste Your URL</h3>
+    <input type="text" id="urlInput" placeholder="Enter your media link">
+    <button class="live" onclick="goSignature()">Go To Signature</button>
+  </div>
+
+  <footer>© LEARN WITH JBKRIYANSH | Made with <span>❤</span></footer>
+
+  <script>
+    function goSignature() {
+      let url = document.getElementById("urlInput").value;
+      if (!url) { alert("Please enter URL!"); return; }
+      window.location.href = "signature.html?url=" + encodeURIComponent(url);
+    }
+  </script>
+</body>
+</html>

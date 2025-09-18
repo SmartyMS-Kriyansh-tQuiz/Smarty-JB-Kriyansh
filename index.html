@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Media Sniffer</title>
+</head>
+<body>
+  <h1>Media Sniffer</h1>
+  <p>Bookmarklet chalane ke baad, yahan media links dikhai denge.</p>
+  <ul id="mediaList"></ul>
+
+  <script>
+    // Example: media links injection
+    let dummyLinks = [
+      "https://rarestudy.site/media/xyz123",
+      "https://rarestudy.site/media/abc456"
+    ];
+
+    let list = document.getElementById("mediaList");
+    dummyLinks.forEach(link => {
+      let li = document.createElement("li");
+      li.innerHTML = `<a href="generate.html?url=${encodeURIComponent(link)}">${link}</a>`;
+      list.appendChild(li);
+    });
+  </script>
+</body>
+</html>
