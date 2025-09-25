@@ -1,429 +1,81 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LEARN WITH JBKRIYANSH — Unified Flow</title>
+  <meta charset="UTF-8">
+  <title>Learn With JBKriyansh</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    :root{
-      --bg:#f6fafb; --card:#fff; --accent:#0ea5a9; --muted:#64748b;
-      --danger:#ef4444; --blue:#2563eb;
-    }
-    body{font-family:Inter,system-ui,Arial,sans-serif;background:linear-gradient(180deg,#eef2ff,#f8fafc);color:#042022;padding:20px;}
-    .wrap{max-width:960px;margin:0 auto;background:var(--card);padding:18px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.06)}
-    h1{margin:0 0 6px;font-size:20px}
-    .muted{color:var(--muted);font-size:13px;margin-bottom:12px}
-    input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(2,6,23,0.06);font-size:15px}
-    .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-    button{padding:10px 14px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
-    .primary{background:var(--accent);color:#012}
-    .ghost{background:transparent;border:1px solid rgba(2,6,23,0.06);color:var(--muted)}
-    .danger{background:var(--danger);color:#fff}
-    .blue{background:var(--blue);color:#fff}
-    pre{background:#02101a;color:#bfeef2;padding:12px;border-radius:8px;overflow:auto;margin-top:12px}
-    video{width:100%;max-height:540px;border-radius:8px;margin-top:12px;background:#000}
-    label{font-size:13px;color:var(--muted)}
-    .small{font-size:13px;padding:8px 10px;border-radius:8px}
-    .flex-between{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    input, button { margin: 10px; padding: 10px; width: 80%; max-width: 400px; }
+    .btn { border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    .green { background: #00c853; color: white; }
+    .blue { background: #2196f3; color: white; }
+    .purple { background: #7e57c2; color: white; }
+    .red { background: #e53935; color: white; }
+    #output { margin-top: 20px; word-break: break-all; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>LEARN WITH JBKRIYANSH — Unified Pipeline</h1>
-    <div class="muted">Paste RareStudy or CDN URL below and press <strong>Run Full Flow</strong>. If you run a server proxy, set <code>PROXY_PREFIX</code> in the script for better detection. This client will <em>not</em> bypass DRM.</div>
+  <h2>LEARN WITH JBKRIYANSH</h2>
+  <p><b>Enter RareStudy URL</b></p>
+  <input id="inputUrl" type="text" placeholder="https://rarestudy.site/media/..."/>
+  <br>
+  <button class="btn green" onclick="startFlow()">Generate</button>
+  <button class="btn blue" onclick="copyOutput()">Copy</button>
+  <button class="btn purple" onclick="location.reload()">Refresh</button>
+  
+  <div id="output"></div>
 
-    <label>Paste RareStudy / media URL</label>
-    <input id="inputUrl" type="text" placeholder="https://rarestudy.site/media/abc... or https://.../master.m3u8?token=..." />
-
-    <div class="row">
-      <button id="saveBtn" class="ghost small">Save to localStorage</button>
-      <button id="runFullBtn" class="primary">Run Full Flow (Auto)</button>
-      <button id="convertBtn" class="blue small">Convert Only</button>
-      <button id="clearBtn" class="danger small">Clear All Keys</button>
-    </div>
-
-    <div class="row" style="margin-top:10px">
-      <button id="openRenderBtn" class="ghost small">Open Render Page (new tab)</button>
-      <button id="openBookmarklet" class="ghost small">Show Sniffer Bookmarklet</button>
-      <button id="copyFinal" class="ghost small">Copy Final Link</button>
-    </div>
-
-    <div style="margin-top:14px" class="flex-between">
-      <div>
-        <label>Stored keys preview</label>
-        <pre id="storedPreview">— checking localStorage —</pre>
-      </div>
-      <div style="max-width:360px;">
-        <label>Flow log</label>
-        <pre id="log" style="height:220px;">— idle —</pre>
-      </div>
-    </div>
-
-    <div style="margin-top:12px">
-      <label>Player (final)</label>
-      <video id="player" controls playsinline muted></video>
-    </div>
-
-    <div style="margin-top:10px" class="muted">Notes: Client-side flow cannot fetch cross-origin pages unless you run a proxy (set <code>PROXY_PREFIX</code>). DRM-protected streams will not play without proper license/EME setup.</div>
-  </div>
-
-  <!-- Hls.js for non-Safari browsers -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-  <script>
-    /**************************************************************************
-     * CONFIG
-     *
-     * If you have a server proxy endpoint that accepts a url query param and
-     * forwards the remote response (CORS-safe), set PROXY_PREFIX appropriately,
-     * e.g.:
-     *   const PROXY_PREFIX = '/proxy?url=';
-     *
-     * If you don't have a proxy, leave it empty ''. The flow will still try
-     * 'client-only' heuristics (if the pasted URL already contains .m3u8/.mpd/etc).
-     **************************************************************************/
-    const PROXY_PREFIX = ''; // <-- set to '/proxy?url=' or 'https://yourdomain.com/proxy?url=' if available
-
-    // LocalStorage keys (kept consistent with your previous pages)
-    const KEY_RAW = 'rarestudy_video_url';
-    const KEY_BOOKMARK = 'bookmark_captured_urls';
-    const KEY_CUT = 'cutcdn_selected_url';
-    const KEY_M3U8 = 'm3u8_converted_url';
-    const KEY_FINAL = 'final_render_link';
-
-    // UI refs
-    const inputUrl = document.getElementById('inputUrl');
-    const savedPreview = document.getElementById('storedPreview');
-    const logEl = document.getElementById('log');
-    const player = document.getElementById('player');
-    const runFullBtn = document.getElementById('runFullBtn');
-    const convertBtn = document.getElementById('convertBtn');
-    const saveBtn = document.getElementById('saveBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const openRenderBtn = document.getElementById('openRenderBtn');
-    const openBookmarklet = document.getElementById('openBookmarklet');
-    const copyFinal = document.getElementById('copyFinal');
-
-    function log(...parts){
-      const s = parts.join(' ');
-      logEl.textContent = s + '\n\n' + logEl.textContent;
-      console.log(...parts);
-    }
-
-    function refreshPreview(){
-      const state = {
-        [KEY_RAW]: localStorage.getItem(KEY_RAW),
-        [KEY_BOOKMARK]: (() => { try { return JSON.parse(localStorage.getItem(KEY_BOOKMARK) || '[]'); } catch(e){ return 'invalid'; } })(),
-        [KEY_CUT]: localStorage.getItem(KEY_CUT),
-        [KEY_M3U8]: localStorage.getItem(KEY_M3U8),
-        [KEY_FINAL]: localStorage.getItem(KEY_FINAL),
-      };
-      savedPreview.textContent = JSON.stringify(state, null, 2);
-      // preload input field with raw if present
-      if(state[KEY_RAW]) inputUrl.value = state[KEY_RAW];
-    }
-
-    // Basic url check
-    function isLikelyUrl(s){
-      if(!s) return false;
-      try { const u = new URL(s); return u.protocol === 'http:' || u.protocol === 'https:'; } catch(e) { return false; }
-    }
-
-    // Convert rules from your m3u8.html
-    function convertToM3u8(url){
-      if(!url) return '';
-      let out = url;
-      out = out.replace(/\/master\.mpd(\b|$)/i, '/master.m3u8');
-      out = out.replace(/\/master\.mpd\?/i, '/master.m3u8?');
-      out = out.replace(/\/dash\/720\/4\.mp4(\b|$)/i, '/master.m3u8');
-      out = out.replace(/\/dash\/720\/4\.mp4\?/i, '/master.m3u8?');
-      out = out.replace(/\/dash\/audio\/4\.mp4(\b|$)/i, '/master.m3u8');
-      out = out.replace(/\/dash\/audio\/4\.mp4\?/i, '/master.m3u8?');
-      return out;
-    }
-
-    // Pick from bookmarks (if user used the sniffer earlier)
-    function pickFromBookmarks(){
-      try {
-        const arr = JSON.parse(localStorage.getItem(KEY_BOOKMARK) || '[]');
-        if(Array.isArray(arr) && arr.length) return arr[0];
-      } catch(e){}
-      return null;
-    }
-
-    // Try to fetch remote URL (via proxy if configured) and look for manifest links
-    async function fetchAndSniff(remote){
-      if(!remote) return null;
-      log('fetchAndSniff: trying to fetch remote content (may require PROXY). remote=', remote);
-      let fetchUrl = remote;
-      if(PROXY_PREFIX){
-        fetchUrl = PROXY_PREFIX + encodeURIComponent(remote);
-      } else {
-        // If remote and no proxy, attempt direct fetch but may be blocked
-        fetchUrl = remote;
-      }
-
-      try {
-        const resp = await fetch(fetchUrl, { method: 'GET' });
-        const contentType = resp.headers.get('content-type') || '';
-        // If content-type indicates an m3u8 or mpd directly, return remote (or proxy-wrapped)
-        if(contentType.includes('application/vnd.apple.mpegurl') || contentType.includes('application/x-mpegURL') || contentType.includes('application/dash+xml') || remote.toLowerCase().endsWith('.m3u8') || remote.toLowerCase().endsWith('.mpd')){
-          log('fetchAndSniff: response looks like manifest (content-type or extension).');
-          return remote;
-        }
-        const text = await resp.text();
-        // search for m3u8 or mpd links inside returned HTML/JS
-        const re = /(https?:\/\/[^\s'"]+?(?:master\.m3u8|\.m3u8|\.mpd|\.mp4)[^\s'"]*)/gi;
-        const matches = [...new Set(Array.from(text.matchAll(re), m => m[1]))];
-        if(matches.length){
-          log('fetchAndSniff: found candidates:', matches);
-          return matches[0]; // return first candidate
-        } else {
-          log('fetchAndSniff: no manifest-like links found in response.');
-          return null;
-        }
-      } catch (err) {
-        log('fetchAndSniff: fetch failed (CORS or network). Error:', err.message);
-        return null;
-      }
-    }
-
-    // Build final render link (client-side safe)
-    function generateRenderLink(cdnUrl){
-      if(!cdnUrl) return '';
-      // If using proxy and you want final to be proxy link, do that
-      if(PROXY_PREFIX){
-        // final points to proxy so browser can load manifest via same origin
-        return PROXY_PREFIX + encodeURIComponent(cdnUrl);
-      }
-      // otherwise append marker param to indicate rendered
-      return cdnUrl.includes('?') ? cdnUrl + '&rendered=true' : cdnUrl + '?rendered=true';
-    }
-
-    // Player helper (Hls.js fallback)
-    async function playUrl(url){
-      if(!url) return;
-      log('playUrl: trying to play', url);
-      // If Safari or native HLS support
-      if(player.canPlayType('application/vnd.apple.mpegurl')){
-        player.src = url;
-        player.muted = true; // helps autoplay in some browsers
-        try { await player.play(); } catch(e){ log('playUrl: autoplay prevented'); }
-        return;
-      }
-      // Use Hls.js
-      if(window.Hls){
-        try {
-          if(window._hlsInst) { try { window._hlsInst.destroy(); } catch(e){} window._hlsInst = null; }
-          const hls = new Hls();
-          window._hlsInst = hls;
-          hls.loadSource(url);
-          hls.attachMedia(player);
-          hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            player.play().catch(()=>log('playUrl: autoplay prevented by browser'));
-          });
-          hls.on(Hls.Events.ERROR, function(evt, data){ console.warn('Hls error', data); });
-        } catch(err){
-          log('playUrl: Hls.js playback failed:', err.message);
-        }
-        return;
-      }
-      // fallback: set src (may fail)
-      player.src = url;
-    }
-
-    // Full pipeline
-    async function runFullFlow(){
-      log('--- Run Full Flow started ---');
-      const raw = (inputUrl.value || '').trim();
-      if(!raw || !isLikelyUrl(raw)){
-        alert('Please paste a valid URL first.');
-        return;
-      }
-
-      // Save raw
-      localStorage.setItem(KEY_RAW, raw);
-      log('Saved raw to', KEY_RAW, raw);
-      refreshPreview();
-
-      // 1) If raw already points to manifest (.m3u8/.mpd/.mp4), prefer it
-      let candidate = null;
-      const low = raw.toLowerCase();
-      if(low.includes('.m3u8') || low.includes('.mpd') || low.includes('.mp4') || low.includes('master.m3u8') || low.includes('master.mpd')){
-        log('Input looks like direct CDN/manifest. Using input as candidate.');
-        candidate = raw;
-      }
-
-      // 2) If not, try cutcdn_selected_url or bookmark array
-      if(!candidate){
-        const selected = localStorage.getItem(KEY_CUT);
-        if(selected){
-          log('Found cutcdn_selected_url in storage:', selected);
-          candidate = selected;
-        }
-      }
-      if(!candidate){
-        const fromBookmark = pickFromBookmarks();
-        if(fromBookmark){
-          log('Picked candidate from bookmark array:', fromBookmark);
-          candidate = fromBookmark;
-        }
-      }
-
-      // 3) If still not candidate, try fetching & sniffing (via proxy if configured)
-      if(!candidate){
-        log('No candidate yet — attempting fetch+sniff (requires proxy for cross-origin).');
-        const sniffed = await fetchAndSniff(raw);
-        if(sniffed){
-          candidate = sniffed;
-          log('fetchAndSniff returned candidate:', candidate);
-        }
-      }
-
-      // 4) fallback: try converting raw via heuristics (replace mpd/mp4 patterns)
-      if(!candidate){
-        log('Fallback: attempting heuristic conversion of raw.');
-        const conv = convertToM3u8(raw);
-        if(conv && conv !== raw){
-          candidate = conv;
-          log('Heuristic conversion produced candidate:', candidate);
-        }
-      }
-
-      if(!candidate){
-        log('No candidate CDN/manifest found. Stopping. You can use the bookmarklet on the original site to capture CDN links or run a proxy.');
-        refreshPreview();
-        return;
-      }
-
-      // Save selected candidate as cutcdn_selected_url (so it persists)
-      localStorage.setItem(KEY_CUT, candidate);
-      log('Saved candidate to', KEY_CUT, candidate);
-
-      // Convert to m3u8 if necessary
-      let m3u8 = candidate;
-      if(!m3u8.toLowerCase().includes('.m3u8')){
-        m3u8 = convertToM3u8(candidate);
-        log('Converted to m3u8 candidate:', m3u8);
-      } else {
-        log('Candidate already m3u8:', m3u8);
-      }
-      localStorage.setItem(KEY_M3U8, m3u8);
-
-      // Generate final render link (optionally proxy-wrapped)
-      const final = generateRenderLink(m3u8);
-      localStorage.setItem(KEY_FINAL, final);
-      log('Generated final render link:', final);
-
-      refreshPreview();
-
-      // Play on page
-      await playUrl(final);
-      log('--- Run Full Flow finished ---');
-    }
-
-    // Convert-only action (does not attempt fetch/sniff)
-    async function runConvertOnly(){
-      log('--- Run Convert Only ---');
-      const raw = (inputUrl.value || '').trim();
-      if(!raw){
-        alert('Paste URL or ensure storage keys exist.');
-        return;
-      }
-      localStorage.setItem(KEY_RAW, raw);
-      const picked = pickFromBookmarks() || localStorage.getItem(KEY_CUT) || raw;
-      let m3u8 = picked;
-      if(!m3u8.toLowerCase().includes('.m3u8')) m3u8 = convertToM3u8(m3u8);
-      localStorage.setItem(KEY_M3U8, m3u8);
-      const final = generateRenderLink(m3u8);
-      localStorage.setItem(KEY_FINAL, final);
-      refreshPreview();
-      log('Converted and saved final link:', final);
-      await playUrl(final);
-    }
-
-    // Small helpers bound to buttons
-    saveBtn.addEventListener('click', ()=>{
-      const v = (inputUrl.value || '').trim();
-      if(!v) return alert('Paste URL first.');
-      localStorage.setItem(KEY_RAW, v);
-      refreshPreview();
-      log('Saved raw url to localStorage.');
-    });
-
-    clearBtn.addEventListener('click', ()=>{
-      if(!confirm('Clear saved keys? This will remove saved raw, bookmark array, cut selection, m3u8 and final link.')) return;
-      localStorage.removeItem(KEY_RAW);
-      localStorage.removeItem(KEY_BOOKMARK);
-      localStorage.removeItem(KEY_CUT);
-      localStorage.removeItem(KEY_M3U8);
-      localStorage.removeItem(KEY_FINAL);
-      refreshPreview();
-      log('Cleared keys.');
-      // stop playback
-      player.pause();
-      player.src = '';
-    });
-
-    openRenderBtn.addEventListener('click', ()=>{
-      // create a minimal render.html on-the-fly in new tab to keep things tidy
-      const final = localStorage.getItem(KEY_FINAL) || '';
-      const m3 = localStorage.getItem(KEY_M3U8) || '';
-      const html = `<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Render</title></head><body style="margin:0;background:#000;color:#fff">
-<h3 style="font-family:Arial;padding:12px">Final Render</h3>
-<pre style="color:#0ff;padding:12px;background:#012">${final || '— no final_render_link —'}</pre>
-<video id="v" controls autoplay playsinline muted style="width:100%;height:calc(100vh - 140px);background:#000"></video>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-const finalLink = ${JSON.stringify(final)};
-const player = document.getElementById('v');
-if(!finalLink){ document.body.insertAdjacentHTML('beforeend','<p style="padding:12px">No final link found in localStorage.</p>'); }
-else if(player.canPlayType('application/vnd.apple.mpegurl')){ player.src = finalLink; player.play().catch(()=>{}); }
-else if(window.Hls){ const hls=new Hls(); hls.loadSource(finalLink); hls.attachMedia(player); hls.on(Hls.Events.MANIFEST_PARSED,()=>player.play().catch(()=>{})); }
-else { player.src = finalLink; }
+async function startFlow() {
+  let url = document.getElementById("inputUrl").value.trim();
+  if (!url) { alert("Please enter RareStudy URL"); return; }
+  
+  document.getElementById("output").innerHTML = "⏳ Processing... Please wait...";
+
+  try {
+    // Step 1: Store RareStudy URL
+    localStorage.setItem("rarestudy_video_url", url);
+
+    // Step 2: Simulate Sniffer (bookmark.html)
+    let captured = simulateSniffer(url);
+    localStorage.setItem("bookmark_captured_urls", JSON.stringify(captured));
+
+    // Step 3: CutCDN (pick first link)
+    let cutLink = captured[0];
+    localStorage.setItem("cutcdn_selected_url", cutLink);
+
+    // Step 4: Convert to m3u8
+    let m3u8Link = cutLink.replace(".mp4", ".m3u8"); // simple convert
+    localStorage.setItem("m3u8_converted_url", m3u8Link);
+
+    // Step 5: Final Render Link
+    let renderLink = "https://player.example.com/?src=" + encodeURIComponent(m3u8Link);
+    localStorage.setItem("render_final_url", renderLink);
+
+    document.getElementById("output").innerHTML = 
+      `<p>✅ Done! Final Render Link:</p>
+       <textarea id="finalLink" rows="3" style="width:90%">${renderLink}</textarea>`;
+  } catch (e) {
+    document.getElementById("output").innerHTML = "❌ Error: " + e.message;
+  }
+}
+
+// Fake Sniffer Function (replace with your real capture logic)
+function simulateSniffer(url) {
+  return [
+    url.replace("/media/", "/cdn/") + ".mp4",
+    url.replace("/media/", "/backup/") + ".mp4"
+  ];
+}
+
+function copyOutput() {
+  let text = document.getElementById("finalLink");
+  if (!text) return alert("No output yet!");
+  text.select();
+  document.execCommand("copy");
+  alert("Copied!");
+}
 </script>
-</body></html>`;
-      const w = window.open();
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-    });
-
-    copyFinal.addEventListener('click', ()=>{
-      const final = localStorage.getItem(KEY_FINAL) || '';
-      if(!final) { alert('No final render link saved. Run the flow first.'); return; }
-      navigator.clipboard.writeText(final).then(()=>alert('Final link copied to clipboard'));
-    });
-
-    // Bookmarklet helper: show a snippet user can drag to bookmarks bar
-    openBookmarklet.addEventListener('click', ()=>{
-      const bm = "javascript:(function(){/* Media Sniffer bookmarklet: paste into bookmark URL */" +
-        "var script=document.createElement('script');script.textContent = '(' + function(){" +
-        "function copyToClipboard(t){try{navigator.clipboard.writeText(t);}catch(e){}};" +
-        "function checkForMedia(u){try{if(!u) return; if(u.match(/\\.m3u8|\\.mpd|\\.mp4|master\\.m3u8/i)) {console.log('Found media',u); prompt('Found media link (copy):', u);}}catch(e){}};" +
-        "(function(){var o=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){this.ms_url=u;return o.apply(this,arguments);};var s=XMLHttpRequest.prototype.send;XMLHttpRequest.prototype.send=function(){this.addEventListener('load',function(){try{checkForMedia(this.ms_url||this.responseURL);}catch(e){} });return s.apply(this,arguments);};})();" +
-        "window.fetch=function(orig){try{var u=(typeof orig==='string')?orig:(orig&&orig.url);checkForMedia(u);}catch(e){}return window.__origFetch?window.__origFetch.apply(this,arguments):fetch.apply(this,arguments);} " +
-        "}.toString() + ')();'; document.body.appendChild(script);})();";
-      const message = "Drag this link to your bookmarks bar (or create new bookmark) and paste this as URL:\n\n" + bm;
-      alert(message);
-    });
-
-    // init
-    refreshPreview();
-    // If localStorage has final link already, autoplay it
-    (function autoPlayIfFinal(){
-      const final = localStorage.getItem(KEY_FINAL);
-      if(final){
-        log('Auto-playing existing final_render_link...');
-        playUrl(final);
-      }
-    })();
-
-    // Run full & convert bindings
-    runFullBtn.addEventListener('click', runFullFlow);
-    convertBtn.addEventListener('click', runConvertOnly);
-
-  </script>
 </body>
 </html>
