@@ -1,0 +1,120 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RareStudy — Paste Video URL</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#0ea5a9;--muted:#9ca3af;--glass: rgba(255,255,255,0.03)}
+    body{font-family:Inter,system-ui,Arial,sans-serif;background:linear-gradient(180deg,#071025 0%, #071228 100%);color:#e6eef6;padding:28px;}
+    .wrap{max-width:820px;margin:0 auto;background:var(--card);padding:20px;border-radius:12px;box-shadow:0 6px 20px rgba(2,6,23,0.6)}
+    h1{margin:0 0 8px;font-size:20px}
+    p.lead{color:var(--muted);margin:0 0 16px}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type="text"]{width:100%;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:var(--glass);color:#fff;font-size:15px}
+    .row{display:flex;gap:8px;margin-top:12px}
+    button{background:var(--accent);color:#042022;border:none;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    .small{padding:8px 10px;font-size:14px}
+    .meta{margin-top:12px;color:var(--muted);font-size:13px}
+    pre{background:#02101a;padding:12px;border-radius:8px;overflow:auto;color:#bfeef2}
+    .hint{font-size:13px;color:#9fb7b6;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>RareStudy — Video URL Store (Step 1)</h1>
+    <p class="lead">Yahan user rarestudy video ka URL paste karega. Yeh page URL ko localStorage mein store karega aur aage ki pipeline ke liye ready karega.</p><label for="rarestudyUrl">Paste RareStudy Video URL</label>
+<input id="rarestudyUrl" type="text" placeholder="https://rarestudy.example/watch/...." autocomplete="off" />
+
+<div class="row">
+  <button id="saveBtn">Save URL (Local)</button>
+  <button id="nextBtn" class="small">Save & Go to Next (generate.html)</button>
+  <button id="clearBtn" class="ghost small">Clear</button>
+</div>
+
+<div class="meta">
+  <div>Stored value preview:</div>
+  <pre id="preview">— no URL stored —</pre>
+  <div class="hint">Note: This page intentionally only stores the URL. Do not use it to bypass DRM or access content you do not own. Use your server-side components for secure processing.</div>
+</div>
+
+  </div>  <script>
+    // rarerstudy.html — stores the raw video URL in localStorage under key 'rarestudy_video_url'
+    // Integration notes (where to plug later):
+    // - Your next page (e.g., generate.html) can read localStorage.getItem('rarestudy_video_url')
+    //   or accept the URL via query param when redirecting.
+    // - This file intentionally does not fetch or process CDN links.
+
+    const INPUT_ID = 'rarestudy_video_url';
+    const urlInput = document.getElementById('rarestudyUrl');
+    const preview = document.getElementById('preview');
+    const saveBtn = document.getElementById('saveBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    // Load saved value on open
+    function loadStored() {
+      const stored = localStorage.getItem(INPUT_ID);
+      if (stored) {
+        urlInput.value = stored;
+        preview.textContent = stored;
+      } else {
+        preview.textContent = '— no URL stored —';
+      }
+    }
+
+    // Basic URL validation (lightweight)
+    function isLikelyUrl(s){
+      if (!s) return false;
+      try { const u = new URL(s); return (u.protocol === 'http:' || u.protocol === 'https:'); }
+      catch(e){ return false; }
+    }
+
+    saveBtn.addEventListener('click', () => {
+      const v = urlInput.value.trim();
+      if (!v) { alert('Please paste a video URL first.'); return; }
+      if (!isLikelyUrl(v)) { if(!confirm('Input does not look like a valid URL. Save anyway?')) return; }
+      localStorage.setItem(INPUT_ID, v);
+      preview.textContent = v;
+      // small UX feedback
+      saveBtn.textContent = 'Saved ✔';
+      setTimeout(()=> saveBtn.textContent = 'Save URL (Local)', 1200);
+    });
+
+    // Save and go to next page (generate.html) with query param 'source=rarestudy'
+    nextBtn.addEventListener('click', () => {
+      const v = urlInput.value.trim();
+      if (!v) { alert('Please paste a video URL first.'); return; }
+      localStorage.setItem(INPUT_ID, v);
+      // Redirect to next page in pipeline. Replace 'generate.html' with your actual next filename when ready.
+      const next = 'generate.html?source=rarestudy';
+      // also include url as query param (encoded) so server-side pages can read without localStorage
+      const encoded = encodeURIComponent(v);
+      window.location.href = next + '&url=' + encoded;
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if (!confirm('Clear stored URL?')) return;
+      urlInput.value = '';
+      localStorage.removeItem(INPUT_ID);
+      preview.textContent = '— no URL stored —';
+    });
+
+    // Support paste-on-load if opening via deep-link
+    (function checkQuery() {
+      const q = new URLSearchParams(window.location.search);
+      if (q.has('url')) {
+        const u = q.get('url');
+        if (u) {
+          urlInput.value = u;
+          // Do not auto-save; allow user to review then press Save
+        }
+      }
+    })();
+
+    // initialize
+    loadStored();
+  </script></body>
+</html>
