@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CUT CDN</title>
+</head>
+<body>
+  <p style="font-family:Arial;text-align:center;padding:20px;">Processing... Redirecting to Render Tool 🔄</p>
+
+  <script>
+    function getQuery(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+    const src = getQuery("src");
+    if (src) {
+      // forward to render.html with same link
+      window.location.href = "render.html?src=" + encodeURIComponent(src);
+    } else {
+      document.body.innerHTML = "<p style='color:red;text-align:center'>❌ No source link provided.</p>";
+    }
+  </script>
+</body>
+</html>
