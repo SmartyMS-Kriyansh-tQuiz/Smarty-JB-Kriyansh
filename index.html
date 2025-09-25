@@ -2,18 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Learn With JBKriyansh</title>
+  <title>Learn With JBKRIYANSH</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    input, button { margin: 10px; padding: 10px; width: 80%; max-width: 400px; }
+    input, button, textarea { margin: 10px; padding: 10px; width: 80%; max-width: 420px; }
     .btn { border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
     .green { background: #00c853; color: white; }
     .blue { background: #2196f3; color: white; }
     .purple { background: #7e57c2; color: white; }
-    .red { background: #e53935; color: white; }
     #output { margin-top: 20px; word-break: break-all; }
+    video { width: 95%; max-width: 600px; margin-top: 15px; border-radius: 8px; }
   </style>
+  <!-- Hls.js for m3u8 rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
   <h2>LEARN WITH JBKRIYANSH</h2>
@@ -25,6 +27,7 @@
   <button class="btn purple" onclick="location.reload()">Refresh</button>
   
   <div id="output"></div>
+  <div id="player"></div>
 
 <script>
 async function startFlow() {
@@ -34,41 +37,82 @@ async function startFlow() {
   document.getElementById("output").innerHTML = "⏳ Processing... Please wait...";
 
   try {
-    // Step 1: Store RareStudy URL
+    // STEP 1: Save RareStudy URL
     localStorage.setItem("rarestudy_video_url", url);
 
-    // Step 2: Simulate Sniffer (bookmark.html)
+    // STEP 2: Sniffer (simulate capture CDN links)
     let captured = simulateSniffer(url);
     localStorage.setItem("bookmark_captured_urls", JSON.stringify(captured));
 
-    // Step 3: CutCDN (pick first link)
+    // STEP 3: CutCDN (select first link)
     let cutLink = captured[0];
     localStorage.setItem("cutcdn_selected_url", cutLink);
 
-    // Step 4: Convert to m3u8
-    let m3u8Link = cutLink.replace(".mp4", ".m3u8"); // simple convert
+    // STEP 4: Convert to m3u8 (fix logic: mp4 → m3u8 OR direct)
+    let m3u8Link = convertToM3U8(cutLink);
     localStorage.setItem("m3u8_converted_url", m3u8Link);
 
-    // Step 5: Final Render Link
-    let renderLink = "https://player.example.com/?src=" + encodeURIComponent(m3u8Link);
+    // STEP 5: Render (fixed)
+    let renderLink = m3u8Link; // final playable
     localStorage.setItem("render_final_url", renderLink);
 
+    // Output UI
     document.getElementById("output").innerHTML = 
       `<p>✅ Done! Final Render Link:</p>
-       <textarea id="finalLink" rows="3" style="width:90%">${renderLink}</textarea>`;
+       <textarea id="finalLink" rows="3">${renderLink}</textarea>`;
+
+    // Auto-play player
+    loadPlayer(renderLink);
+
   } catch (e) {
     document.getElementById("output").innerHTML = "❌ Error: " + e.message;
   }
 }
 
-// Fake Sniffer Function (replace with your real capture logic)
+// 🔎 Fake Sniffer (replace with your real logic)
 function simulateSniffer(url) {
+  // Example: generate fake CDN links
   return [
-    url.replace("/media/", "/cdn/") + ".mp4",
-    url.replace("/media/", "/backup/") + ".mp4"
+    url.replace("/media/", "/cdn/") + "/index.m3u8",
+    url.replace("/media/", "/backup/") + "/index.m3u8"
   ];
 }
 
+// 🔄 Convert to M3U8 (fix step)
+function convertToM3U8(link) {
+  if (link.endsWith(".mp4")) {
+    return link.replace(".mp4", "/index.m3u8");
+  }
+  if (link.includes(".m3u8")) {
+    return link;
+  }
+  return link + "/index.m3u8"; 
+}
+
+// 🎥 Render Player with Hls.js
+function loadPlayer(m3u8Url) {
+  let playerDiv = document.getElementById("player");
+  playerDiv.innerHTML = `<video id="video" controls autoplay></video>`;
+  let video = document.getElementById("video");
+
+  if (Hls.isSupported()) {
+    let hls = new Hls();
+    hls.loadSource(m3u8Url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, function () {
+      video.play();
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = m3u8Url;
+    video.addEventListener('loadedmetadata', function () {
+      video.play();
+    });
+  } else {
+    playerDiv.innerHTML = "❌ Your browser doesn't support HLS playback!";
+  }
+}
+
+// 📋 Copy to Clipboard
 function copyOutput() {
   let text = document.getElementById("finalLink");
   if (!text) return alert("No output yet!");
