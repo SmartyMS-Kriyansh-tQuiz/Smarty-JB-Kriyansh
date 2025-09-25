@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Render Final CDN Link</title>
+<style>
+body{font-family:Inter,system-ui,Arial,sans-serif;background:#071025;color:#e6eef6;padding:20px;max-width:980px;margin:0 auto;}
+.card{background:#051423;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
+h1{margin:0 0 8px;font-size:20px;}
+pre{background:#02101a;padding:10px;border-radius:6px;overflow:auto;color:#bfeef2;max-height:200px;}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+button{padding:8px 10px;border-radius:6px;border:none;cursor:pointer;font-weight:600;}
+button.primary{background:#0ea5a9;color:#012;}
+button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb7b6;}
+video{width:100%;max-height:480px;border-radius:8px;margin-top:12px;background:#000;}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Render Final CDN Link</h1>
+<div class="muted">This page reads the converted CDN link from <code>m3u8.html</code>, generates a final render link, and plays it in the browser.</div>
+
+<pre id="cdnLink">— loading converted CDN link —</pre>
+<pre id="renderLink">— final render link will appear here —</pre>
+
+<div class="row">
+  <button id="generateBtn" class="primary">Generate Render Link</button>
+  <button id="copyBtn" class="ghost">Copy Render Link</button>
+</div>
+
+<video id="videoPlayer" controls playsinline muted></video>
+
+<!-- Hls.js -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<script>
+const STORAGE_KEY = 'm3u8_converted_url';
+const cdnEl = document.getElementById('cdnLink');
+const renderEl = document.getElementById('renderLink');
+const video = document.getElementById('videoPlayer');
+
+function getConvertedCDN() {
+  return localStorage.getItem(STORAGE_KEY) || '';
+}
+
+// Example render link generator (client-side safe)
+function generateRenderLink(cdnUrl){
+  if(!cdnUrl) return '';
+  // Here you can put your own render script logic; for demo, we just append ?rendered=true
+  return cdnUrl.includes('?') ? cdnUrl + '&rendered=true' : cdnUrl + '?rendered=true';
+}
+
+// ---- Initialize ----
+const convertedUrl = getConvertedCDN();
+cdnEl.textContent = convertedUrl;
+
+document.getElementById('generateBtn').addEventListener('click', ()=>{
+  if(!convertedUrl){ alert('No converted CDN link found. Go to m3u8.html first.'); return; }
+  const renderLink = generateRenderLink(convertedUrl);
+  renderEl.textContent = renderLink;
+  localStorage.setItem('final_render_link', renderLink);
+
+  // ---- Play in video ----
+  if(video.canPlayType('application/vnd.apple.mpegurl')){
+    video.src = renderLink;
+    video.play().catch(()=>console.log('Autoplay blocked by browser'));
+  } else if(window.Hls){
+    if(window._hlsInst) window._hlsInst.destroy();
+    const hls = new Hls();
+    window._hlsInst = hls;
+    hls.loadSource(renderLink);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play().catch(()=>console.log('Autoplay blocked')));
+  } else {
+    alert('Hls.js not loaded; include Hls.js for non-Safari browsers');
+  }
+});
+
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  const renderLink = localStorage.getItem('final_render_link');
+  if(!renderLink) return alert('No render link generated yet.');
+  navigator.clipboard.writeText(renderLink).then(()=>alert('Render link copied to clipboard'));
+});
+</script>
+</body>
+</html>
