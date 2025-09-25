@@ -9,13 +9,15 @@ body{font-family:Inter,system-ui,Arial,sans-serif;background:#f0f4f8;margin:0;pa
 .container{background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.15);padding:20px;max-width:420px;width:100%;text-align:center;}
 h1{background:linear-gradient(90deg,#2563eb,#3b82f6);color:#fff;padding:12px;border-radius:8px;margin-bottom:20px;font-size:22px;}
 input{width:100%;padding:12px;border-radius:6px;border:1px solid #ccc;margin-bottom:12px;font-size:16px;}
-button{width:100%;padding:12px;border:none;border-radius:6px;color:#fff;font-weight:600;font-size:16px;margin:6px 0;cursor:pointer;}
-button.generate{background:#10b981;}
-button.copy{background:#14b8a6;}
-button.preview{background:#2563eb;}
-button.refresh{background:#8b5cf6;}
-button.back{background:#ef4444;}
+button{width:100%;padding:12px;border:none;border-radius:6px;color:#fff;font-weight:600;font-size:16px;margin:6px 0;cursor:pointer;transition:0.2s;}
+button.generate{background:#10b981;}   /* Green */
+button.copy{background:#14b8a6;}       /* Teal */
+button.preview{background:#2563eb;}    /* Blue */
+button.refresh{background:#8b5cf6;}    /* Purple */
+button.back{background:#ef4444;}       /* Red */
+button:hover{opacity:0.9;}
 pre{background:#f1f5f9;padding:10px;border-radius:6px;margin-top:12px;overflow-x:auto;}
+.note{font-size:13px;color:#555;margin-top:10px;}
 </style>
 </head>
 <body>
@@ -29,50 +31,55 @@ pre{background:#f1f5f9;padding:10px;border-radius:6px;margin-top:12px;overflow-x
 <button class="refresh" id="refreshBtn">Refresh</button>
 <button class="back" id="backBtn">← Back</button>
 <pre id="finalLink">— Final render link will appear here —</pre>
+<div class="note">ℹ️ Generating takes ~10s while render.html runs in background.</div>
 </div>
 
 <script>
-// ---- STORAGE KEYS ----
 const STORAGE_RARESTUDY = 'rarestudy_video_url';
 const rareInput = document.getElementById('rareUrl');
 const finalLinkEl = document.getElementById('finalLink');
 
-// ---- SAVE RARESTUDY URL ----
+// ---- SAVE + AUTO RUN RENDER ----
 document.getElementById('generateBtn').addEventListener('click', async ()=>{
   const url = rareInput.value.trim();
   if(!url) return alert('Enter RareStudy URL first.');
-  
-  // Save in localStorage (simulate saving to rarestudy.html in repo)
+
+  // Step 1: save RareStudy link
   localStorage.setItem(STORAGE_RARESTUDY, url);
+  finalLinkEl.textContent = "⚙️ Running render.html in background... Please wait 10s";
 
-  // Now trigger render.html to generate final link
-  await fetchFinalFromRender();
-});
+  // Step 2: open render.html in hidden iframe
+  const iframe = document.createElement('iframe');
+  iframe.src = "render.html";
+  iframe.style.display = "none";
+  document.body.appendChild(iframe);
 
-// ---- FETCH FINAL LINK FROM render.html ----
-async function fetchFinalFromRender(){
-  try {
-    const resp = await fetch('render.html');
-    const text = await resp.text();
-    // Try to capture any generated link (look for https://learnwithpw-recorded...)
-    const match = text.match(/https:\/\/learnwithpw-recorded\.onrender\.com\/play\?v=[^\s"'<>]+/);
-    if(match){
-      finalLinkEl.textContent = match[0];
-      localStorage.setItem('final_render_link', match[0]);
-      alert('Render link ready!');
+  // Step 3: countdown popup
+  let sec = 10;
+  const countdown = setInterval(()=>{
+    if(sec > 0){
+      alert("⏳ Generating render link... " + sec + "s left");
+      sec--;
     } else {
-      finalLinkEl.textContent = '❌ Could not fetch final render link. Run render.html flow first.';
+      clearInterval(countdown);
+      // Step 4: after 10s fetch final link
+      const finalUrl = localStorage.getItem('final_render_link');
+      if(finalUrl){
+        finalLinkEl.textContent = finalUrl;
+        alert('✅ Render link ready!');
+      } else {
+        finalLinkEl.textContent = "❌ Could not generate final render link. Try again.";
+      }
+      iframe.remove();
     }
-  } catch(e){
-    finalLinkEl.textContent = '⚠️ Error fetching render.html';
-  }
-}
+  },1000);
+});
 
 // ---- COPY FINAL LINK ----
 document.getElementById('copyBtn').addEventListener('click', ()=>{
   const text = finalLinkEl.textContent;
   if(!text.startsWith('http')) return alert('No render link to copy.');
-  navigator.clipboard.writeText(text).then(()=>alert('Copied render link!'));
+  navigator.clipboard.writeText(text).then(()=>alert('📋 Copied render link!'));
 });
 
 // ---- PREVIEW FINAL LINK ----
@@ -83,21 +90,14 @@ document.getElementById('previewBtn').addEventListener('click', ()=>{
 });
 
 // ---- REFRESH ----
-document.getElementById('refreshBtn').addEventListener('click', ()=>{
-  location.reload();
-});
+document.getElementById('refreshBtn').addEventListener('click', ()=>location.reload());
 
 // ---- BACK ----
-document.getElementById('backBtn').addEventListener('click', ()=>{
-  window.history.back();
-});
+document.getElementById('backBtn').addEventListener('click', ()=>window.history.back());
 
-// ---- AUTO LOAD PREVIOUS DATA ----
-const storedUrl = localStorage.getItem(STORAGE_RARESTUDY);
-if(storedUrl) rareInput.value = storedUrl;
-
-const storedFinal = localStorage.getItem('final_render_link');
-if(storedFinal) finalLinkEl.textContent = storedFinal;
+// ---- Keep input EMPTY on load ----
+rareInput.value = "";
+finalLinkEl.textContent = "— Final render link will appear here —";
 </script>
 </body>
 </html>
