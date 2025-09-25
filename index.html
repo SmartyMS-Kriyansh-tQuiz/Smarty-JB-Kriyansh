@@ -1,125 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Learn With JBKRIYANSH</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LEARN WITH JBKRIYANSH</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    input, button, textarea { margin: 10px; padding: 10px; width: 80%; max-width: 420px; }
-    .btn { border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-    .green { background: #00c853; color: white; }
-    .blue { background: #2196f3; color: white; }
-    .purple { background: #7e57c2; color: white; }
-    #output { margin-top: 20px; word-break: break-all; }
-    video { width: 95%; max-width: 600px; margin-top: 15px; border-radius: 8px; }
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f8f9fa; }
+    h1 { background: linear-gradient(90deg, #0066ff, #0099ff); color: white; padding: 15px; border-radius: 8px; }
+    .card { margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 12px; max-width: 400px; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
+    input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; }
+    button { display: block; width: 90%; margin: 8px auto; padding: 12px; border: none; border-radius: 6px; font-weight: bold; }
+    .recorded { background: #00cc66; color: white; }
   </style>
-  <!-- Hls.js for m3u8 rendering -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
-  <h2>LEARN WITH JBKRIYANSH</h2>
-  <p><b>Enter RareStudy URL</b></p>
-  <input id="inputUrl" type="text" placeholder="https://rarestudy.site/media/..."/>
-  <br>
-  <button class="btn green" onclick="startFlow()">Generate</button>
-  <button class="btn blue" onclick="copyOutput()">Copy</button>
-  <button class="btn purple" onclick="location.reload()">Refresh</button>
-  
-  <div id="output"></div>
-  <div id="player"></div>
+  <h1>LEARN WITH JBKRIYANSH</h1>
 
-<script>
-async function startFlow() {
-  let url = document.getElementById("inputUrl").value.trim();
-  if (!url) { alert("Please enter RareStudy URL"); return; }
-  
-  document.getElementById("output").innerHTML = "⏳ Processing... Please wait...";
+  <div id="recorded" class="card">
+    <h3>Enter RareStudy URL</h3>
+    <input type="text" id="recordedUrl" placeholder="https://rarestudy.site/media/...">
+    <button class="recorded" onclick="goToCutCdn()">Next</button>
+  </div>
 
-  try {
-    // STEP 1: Save RareStudy URL
-    localStorage.setItem("rarestudy_video_url", url);
+  <footer>© LEARN WITH JBKRIYANSH</footer>
 
-    // STEP 2: Sniffer (simulate capture CDN links)
-    let captured = simulateSniffer(url);
-    localStorage.setItem("bookmark_captured_urls", JSON.stringify(captured));
-
-    // STEP 3: CutCDN (select first link)
-    let cutLink = captured[0];
-    localStorage.setItem("cutcdn_selected_url", cutLink);
-
-    // STEP 4: Convert to m3u8 (fix logic: mp4 → m3u8 OR direct)
-    let m3u8Link = convertToM3U8(cutLink);
-    localStorage.setItem("m3u8_converted_url", m3u8Link);
-
-    // STEP 5: Render (fixed)
-    let renderLink = m3u8Link; // final playable
-    localStorage.setItem("render_final_url", renderLink);
-
-    // Output UI
-    document.getElementById("output").innerHTML = 
-      `<p>✅ Done! Final Render Link:</p>
-       <textarea id="finalLink" rows="3">${renderLink}</textarea>`;
-
-    // Auto-play player
-    loadPlayer(renderLink);
-
-  } catch (e) {
-    document.getElementById("output").innerHTML = "❌ Error: " + e.message;
-  }
-}
-
-// 🔎 Fake Sniffer (replace with your real logic)
-function simulateSniffer(url) {
-  // Example: generate fake CDN links
-  return [
-    url.replace("/media/", "/cdn/") + "/index.m3u8",
-    url.replace("/media/", "/backup/") + "/index.m3u8"
-  ];
-}
-
-// 🔄 Convert to M3U8 (fix step)
-function convertToM3U8(link) {
-  if (link.endsWith(".mp4")) {
-    return link.replace(".mp4", "/index.m3u8");
-  }
-  if (link.includes(".m3u8")) {
-    return link;
-  }
-  return link + "/index.m3u8"; 
-}
-
-// 🎥 Render Player with Hls.js
-function loadPlayer(m3u8Url) {
-  let playerDiv = document.getElementById("player");
-  playerDiv.innerHTML = `<video id="video" controls autoplay></video>`;
-  let video = document.getElementById("video");
-
-  if (Hls.isSupported()) {
-    let hls = new Hls();
-    hls.loadSource(m3u8Url);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, function () {
-      video.play();
-    });
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = m3u8Url;
-    video.addEventListener('loadedmetadata', function () {
-      video.play();
-    });
-  } else {
-    playerDiv.innerHTML = "❌ Your browser doesn't support HLS playback!";
-  }
-}
-
-// 📋 Copy to Clipboard
-function copyOutput() {
-  let text = document.getElementById("finalLink");
-  if (!text) return alert("No output yet!");
-  text.select();
-  document.execCommand("copy");
-  alert("Copied!");
-}
-</script>
+  <script>
+    function goToCutCdn() {
+      const val = document.getElementById("recordedUrl").value.trim();
+      if (!val) { alert("Please enter URL"); return; }
+      // pass link to cutcdn.html via query param
+      window.location.href = "cutcdn.html?src=" + encodeURIComponent(val);
+    }
+  </script>
 </body>
 </html>
