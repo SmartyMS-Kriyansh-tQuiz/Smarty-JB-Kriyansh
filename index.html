@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LEARN WITH JBKRIYANSH — RareStudy Media</title>
+<title>LEARN WITH JBKRIYANSH — Dashboard</title>
 <style>
 body{font-family:Inter,system-ui,Arial,sans-serif;background:#f0f4f8;margin:0;padding:20px;display:flex;justify-content:center;align-items:center;min-height:100vh;}
-.container{background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.15);padding:20px;max-width:400px;width:100%;text-align:center;}
+.container{background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.15);padding:20px;max-width:420px;width:100%;text-align:center;}
 h1{background:linear-gradient(90deg,#2563eb,#3b82f6);color:#fff;padding:12px;border-radius:8px;margin-bottom:20px;font-size:22px;}
 input{width:100%;padding:12px;border-radius:6px;border:1px solid #ccc;margin-bottom:12px;font-size:16px;}
 button{width:100%;padding:12px;border:none;border-radius:6px;color:#fff;font-weight:600;font-size:16px;margin:6px 0;cursor:pointer;}
@@ -15,66 +15,70 @@ button.copy{background:#14b8a6;}
 button.preview{background:#2563eb;}
 button.refresh{background:#8b5cf6;}
 button.back{background:#ef4444;}
+pre{background:#f1f5f9;padding:10px;border-radius:6px;margin-top:12px;overflow-x:auto;}
 </style>
 </head>
 <body>
 <div class="container">
 <h1>LEARN WITH JBKRIYANSH</h1>
-<label>🎬 RECORDED</label>
+<label>🎬 Enter RareStudy Link</label>
 <input type="text" id="rareUrl" placeholder="https://rarestudy.site/media/...">
-<button class="generate" id="generateBtn">Generate</button>
+<button class="generate" id="generateBtn">Save & Generate</button>
 <button class="copy" id="copyBtn">Copy</button>
 <button class="preview" id="previewBtn">Preview</button>
 <button class="refresh" id="refreshBtn">Refresh</button>
 <button class="back" id="backBtn">← Back</button>
-<pre id="finalLink" style="background:#f1f5f9;padding:10px;border-radius:6px;margin-top:12px;overflow-x:auto;"></pre>
+<pre id="finalLink">— Final render link will appear here —</pre>
 </div>
 
 <script>
 // ---- STORAGE KEYS ----
 const STORAGE_RARESTUDY = 'rarestudy_video_url';
-const STORAGE_CDN_FINAL = 'final_render_link';
-
 const rareInput = document.getElementById('rareUrl');
 const finalLinkEl = document.getElementById('finalLink');
 
-// ---- GENERATE FLOW ----
-document.getElementById('generateBtn').addEventListener('click', ()=>{
+// ---- SAVE RARESTUDY URL ----
+document.getElementById('generateBtn').addEventListener('click', async ()=>{
   const url = rareInput.value.trim();
   if(!url) return alert('Enter RareStudy URL first.');
-  // Step 1: store in rarestudy.html storage
+  
+  // Save in localStorage (simulate saving to rarestudy.html in repo)
   localStorage.setItem(STORAGE_RARESTUDY, url);
 
-  // Step 2: simulate flow through other pages
-  // You can navigate or run scripts here programmatically if needed
-  // For demo, we just run the final render.html flow
-
-  // Open bypass.html (safe content) - optional
-  // Open autoplay.html to load video
-  // Open bookmark.html to capture CDN links
-  // Open cutcdn.html to pick single CDN link
-  // Open m3u8.html to replace mp4/mpd → m3u8
-  // Open render.html to generate final render link
-
-  // Here, we simulate final link retrieval
-  setTimeout(()=>{
-    const finalUrl = localStorage.getItem(STORAGE_CDN_FINAL) || '— No final render link yet. Run full flow first.';
-    finalLinkEl.textContent = finalUrl;
-    alert('Render link ready!');
-  },500); // simulate async processing
+  // Now trigger render.html to generate final link
+  await fetchFinalFromRender();
 });
+
+// ---- FETCH FINAL LINK FROM render.html ----
+async function fetchFinalFromRender(){
+  try {
+    const resp = await fetch('render.html');
+    const text = await resp.text();
+    // Try to capture any generated link (look for https://learnwithpw-recorded...)
+    const match = text.match(/https:\/\/learnwithpw-recorded\.onrender\.com\/play\?v=[^\s"'<>]+/);
+    if(match){
+      finalLinkEl.textContent = match[0];
+      localStorage.setItem('final_render_link', match[0]);
+      alert('Render link ready!');
+    } else {
+      finalLinkEl.textContent = '❌ Could not fetch final render link. Run render.html flow first.';
+    }
+  } catch(e){
+    finalLinkEl.textContent = '⚠️ Error fetching render.html';
+  }
+}
 
 // ---- COPY FINAL LINK ----
 document.getElementById('copyBtn').addEventListener('click', ()=>{
   const text = finalLinkEl.textContent;
-  if(!text) return alert('No render link to copy.');
+  if(!text.startsWith('http')) return alert('No render link to copy.');
   navigator.clipboard.writeText(text).then(()=>alert('Copied render link!'));
 });
 
 // ---- PREVIEW FINAL LINK ----
 document.getElementById('previewBtn').addEventListener('click', ()=>{
   const text = finalLinkEl.textContent;
-  if(!text) return alert('No render link to preview.');
+  if(!text.startsWith('http')) return alert('No render link to preview.');
   window.open(text,'_blank');
 });
 
@@ -88,12 +92,11 @@ document.getElementById('backBtn').addEventListener('click', ()=>{
   window.history.back();
 });
 
-// ---- LOAD STORED URL IF ANY ----
+// ---- AUTO LOAD PREVIOUS DATA ----
 const storedUrl = localStorage.getItem(STORAGE_RARESTUDY);
 if(storedUrl) rareInput.value = storedUrl;
 
-// ---- LOAD FINAL LINK IF EXISTS ----
-const storedFinal = localStorage.getItem(STORAGE_CDN_FINAL);
+const storedFinal = localStorage.getItem('final_render_link');
 if(storedFinal) finalLinkEl.textContent = storedFinal;
 </script>
 </body>
