@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cut CDN — Select Single Link</title>
+<style>
+body{font-family:Inter,system-ui,Arial,sans-serif;background:#071025;color:#e6eef6;padding:20px;max-width:980px;margin:0 auto;}
+.card{background:#051423;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
+h1{margin:0 0 8px;font-size:20px;}
+pre{background:#02101a;padding:10px;border-radius:6px;overflow:auto;color:#bfeef2;max-height:200px;}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+button{padding:8px 10px;border-radius:6px;border:none;cursor:pointer;font-weight:600;}
+button.primary{background:#0ea5a9;color:#012;}
+button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb7b6;}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Cut CDN — Pick Single Link</h1>
+<div class="muted">This page picks either the first or last captured CDN link from <code>bookmark.html</code> and stores it for use in <code>autoplay.html</code>.</div>
+
+<pre id="captured">— no CDN link selected yet —</pre>
+
+<div class="row">
+  <button id="pickFirst" class="primary">Pick First CDN Link</button>
+  <button id="pickLast" class="primary">Pick Last CDN Link</button>
+  <button id="copyBtn" class="ghost">Copy Selected Link</button>
+</div>
+
+<script>
+const STORAGE_BOOKMARK_KEY = 'bookmark_captured_urls'; // key where bookmark.html stores array
+const STORAGE_FINAL_KEY = 'cutcdn_selected_url'; // key to store selected single CDN
+const capturedEl = document.getElementById('captured');
+
+function loadCapturedArray() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(STORAGE_BOOKMARK_KEY) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch(e){return [];}
+}
+
+function saveSelected(url) {
+  localStorage.setItem(STORAGE_FINAL_KEY, url);
+  capturedEl.textContent = url;
+}
+
+document.getElementById('pickFirst').addEventListener('click', ()=>{
+  const arr = loadCapturedArray();
+  if(arr.length===0) return alert('No captured CDN links found. Open bookmark.html first.');
+  saveSelected(arr[0]);
+});
+
+document.getElementById('pickLast').addEventListener('click', ()=>{
+  const arr = loadCapturedArray();
+  if(arr.length===0) return alert('No captured CDN links found. Open bookmark.html first.');
+  saveSelected(arr[arr.length-1]);
+});
+
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  const url = localStorage.getItem(STORAGE_FINAL_KEY);
+  if(!url) return alert('No selected CDN link yet.');
+  navigator.clipboard.writeText(url).then(()=>alert('Copied to clipboard'));
+});
+
+// Auto load stored selected if exists
+(function(){
+  const url = localStorage.getItem(STORAGE_FINAL_KEY);
+  if(url) capturedEl.textContent = url;
+})();
+</script>
+</body>
+</html>
