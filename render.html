@@ -3,85 +3,105 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Render Final CDN Link</title>
+<title>LEARN WITH JBKRIYANSH — RareStudy Media</title>
 <style>
-body{font-family:Inter,system-ui,Arial,sans-serif;background:#071025;color:#e6eef6;padding:20px;max-width:980px;margin:0 auto;}
-.card{background:#051423;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
-h1{margin:0 0 8px;font-size:20px;}
-pre{background:#02101a;padding:10px;border-radius:6px;overflow:auto;color:#bfeef2;max-height:200px;}
-.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
-button{padding:8px 10px;border-radius:6px;border:none;cursor:pointer;font-weight:600;}
-button.primary{background:#0ea5a9;color:#012;}
-button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb7b6;}
-video{width:100%;max-height:480px;border-radius:8px;margin-top:12px;background:#000;}
+body{font-family:Inter,system-ui,Arial,sans-serif;background:#f0f4f8;margin:0;padding:20px;display:flex;justify-content:center;align-items:center;min-height:100vh;}
+.container{background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.15);padding:20px;max-width:400px;width:100%;text-align:center;}
+h1{background:linear-gradient(90deg,#2563eb,#3b82f6);color:#fff;padding:12px;border-radius:8px;margin-bottom:20px;font-size:22px;}
+input{width:100%;padding:12px;border-radius:6px;border:1px solid #ccc;margin-bottom:12px;font-size:16px;}
+button{width:100%;padding:12px;border:none;border-radius:6px;color:#fff;font-weight:600;font-size:16px;margin:6px 0;cursor:pointer;}
+button.generate{background:#10b981;}
+button.copy{background:#14b8a6;}
+button.preview{background:#2563eb;}
+button.refresh{background:#8b5cf6;}
+button.back{background:#ef4444;}
+pre{background:#f1f5f9;padding:10px;border-radius:6px;margin-top:12px;overflow-x:auto;}
 </style>
 </head>
 <body>
-<div class="card">
-<h1>Render Final CDN Link</h1>
-<div class="muted">This page reads the converted CDN link from <code>m3u8.html</code>, generates a final render link, and plays it in the browser.</div>
-
-<pre id="cdnLink">— loading converted CDN link —</pre>
-<pre id="renderLink">— final render link will appear here —</pre>
-
-<div class="row">
-  <button id="generateBtn" class="primary">Generate Render Link</button>
-  <button id="copyBtn" class="ghost">Copy Render Link</button>
+<div class="container">
+<h1>LEARN WITH JBKRIYANSH</h1>
+<label>🎬 RECORDED</label>
+<input type="text" id="rareUrl" placeholder="https://rarestudy.site/media/...">
+<button class="generate" id="generateBtn">Generate</button>
+<button class="copy" id="copyBtn">Copy</button>
+<button class="preview" id="previewBtn">Preview</button>
+<button class="refresh" id="refreshBtn">Refresh</button>
+<button class="back" id="backBtn">← Back</button>
+<pre id="finalLink">— No final render link yet. Run full flow first.</pre>
 </div>
 
-<video id="videoPlayer" controls playsinline muted></video>
-
-<!-- Hls.js -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
 <script>
-const STORAGE_KEY = 'm3u8_converted_url';
-const cdnEl = document.getElementById('cdnLink');
-const renderEl = document.getElementById('renderLink');
-const video = document.getElementById('videoPlayer');
+// ---- STORAGE KEYS ----
+const STORAGE_RARESTUDY = 'rarestudy_video_url';
+const STORAGE_BOOKMARK = 'bookmark_captured_urls';
+const STORAGE_CUTCDN = 'cutcdn_selected_url';
+const STORAGE_M3U8 = 'm3u8_converted_url';
+const STORAGE_FINAL = 'final_render_link';
 
-function getConvertedCDN() {
-  return localStorage.getItem(STORAGE_KEY) || '';
-}
+const rareInput = document.getElementById('rareUrl');
+const finalLinkEl = document.getElementById('finalLink');
 
-// Example render link generator (client-side safe)
-function generateRenderLink(cdnUrl){
-  if(!cdnUrl) return '';
-  // Here you can put your own render script logic; for demo, we just append ?rendered=true
-  return cdnUrl.includes('?') ? cdnUrl + '&rendered=true' : cdnUrl + '?rendered=true';
-}
-
-// ---- Initialize ----
-const convertedUrl = getConvertedCDN();
-cdnEl.textContent = convertedUrl;
-
+// ---- GENERATE FLOW (Automated) ----
 document.getElementById('generateBtn').addEventListener('click', ()=>{
-  if(!convertedUrl){ alert('No converted CDN link found. Go to m3u8.html first.'); return; }
-  const renderLink = generateRenderLink(convertedUrl);
-  renderEl.textContent = renderLink;
-  localStorage.setItem('final_render_link', renderLink);
+  const url = rareInput.value.trim();
+  if(!url) return alert('Enter RareStudy URL first.');
 
-  // ---- Play in video ----
-  if(video.canPlayType('application/vnd.apple.mpegurl')){
-    video.src = renderLink;
-    video.play().catch(()=>console.log('Autoplay blocked by browser'));
-  } else if(window.Hls){
-    if(window._hlsInst) window._hlsInst.destroy();
-    const hls = new Hls();
-    window._hlsInst = hls;
-    hls.loadSource(renderLink);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play().catch(()=>console.log('Autoplay blocked')));
-  } else {
-    alert('Hls.js not loaded; include Hls.js for non-Safari browsers');
-  }
+  // Step 1: Store raw RareStudy URL
+  localStorage.setItem(STORAGE_RARESTUDY, url);
+
+  // Step 2: Simulate bookmark.html → capture media links
+  // For simplicity, assume the URL itself is the first captured media
+  const capturedUrls = [url];
+  localStorage.setItem(STORAGE_BOOKMARK, JSON.stringify(capturedUrls));
+
+  // Step 3: Simulate cutcdn.html → pick last captured CDN
+  const cutcdnUrl = capturedUrls[capturedUrls.length-1];
+  localStorage.setItem(STORAGE_CUTCDN, cutcdnUrl);
+
+  // Step 4: Simulate m3u8.html → convert to master.m3u8
+  let m3u8Url = cutcdnUrl
+    .replace(/\/master\.mpd\?/gi,'/master.m3u8?')
+    .replace(/\/dash\/720\/4\.mp4\?/gi,'/master.m3u8?')
+    .replace(/\/dash\/audio\/4\.mp4\?/gi,'/master.m3u8?');
+  localStorage.setItem(STORAGE_M3U8, m3u8Url);
+
+  // Step 5: Simulate render.html → generate final render link
+  const renderLink = m3u8Url.includes('?') ? m3u8Url + '&rendered=true' : m3u8Url + '?rendered=true';
+  localStorage.setItem(STORAGE_FINAL, renderLink);
+
+  // Update UI
+  finalLinkEl.textContent = renderLink;
+  alert('✅ Final render link ready!');
 });
 
+// ---- COPY FINAL LINK ----
 document.getElementById('copyBtn').addEventListener('click', ()=>{
-  const renderLink = localStorage.getItem('final_render_link');
-  if(!renderLink) return alert('No render link generated yet.');
-  navigator.clipboard.writeText(renderLink).then(()=>alert('Render link copied to clipboard'));
+  const text = localStorage.getItem(STORAGE_FINAL);
+  if(!text) return alert('No render link available.');
+  navigator.clipboard.writeText(text).then(()=>alert('Copied render link!'));
 });
+
+// ---- PREVIEW FINAL LINK ----
+document.getElementById('previewBtn').addEventListener('click', ()=>{
+  const text = localStorage.getItem(STORAGE_FINAL);
+  if(!text) return alert('No render link available.');
+  window.open(text,'_blank');
+});
+
+// ---- REFRESH ----
+document.getElementById('refreshBtn').addEventListener('click', ()=>location.reload());
+
+// ---- BACK ----
+document.getElementById('backBtn').addEventListener('click', ()=>window.history.back());
+
+// ---- LOAD STORED URL IF ANY ----
+const storedUrl = localStorage.getItem(STORAGE_RARESTUDY);
+if(storedUrl) rareInput.value = storedUrl;
+
+// ---- LOAD FINAL LINK IF EXISTS ----
+const storedFinal = localStorage.getItem(STORAGE_FINAL);
+if(storedFinal) finalLinkEl.textContent = storedFinal;
 </script>
 </body>
 </html>
