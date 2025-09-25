@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoPlay Player — RareStudy URL</title>
+<style>
+  body{font-family:Inter,system-ui,Arial,sans-serif;background:#071025;color:#e6eef6;padding:20px;max-width:980px;margin:0 auto;}
+  .card{background:#051423;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
+  h1{margin:0 0 8px;font-size:20px;}
+  video{width:100%;max-height:520px;border-radius:8px;background:#000;margin-top:12px;}
+  pre{background:#02101a;padding:10px;border-radius:6px;overflow:auto;color:#bfeef2;}
+  .muted{color:#9ca3af;font-size:13px;margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>AutoPlay Player — RareStudy URL</h1>
+<div class="muted">This player automatically loads the URL stored from <code>rarestudy.html</code> and attempts safe auto-play using Hls.js or native HLS support (Safari).</div>
+
+<pre id="storedUrl">— loading stored URL —</pre>
+<video id="video" controls playsinline autoplay muted></video>
+</div>
+
+<!-- Hls.js -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<script>
+  const STORAGE_KEY = 'rarestudy_video_url';
+  const video = document.getElementById('video');
+  const storedEl = document.getElementById('storedUrl');
+
+  // Read stored URL
+  const storedUrl = localStorage.getItem(STORAGE_KEY);
+  if (!storedUrl) {
+    storedEl.textContent = 'No stored URL found. Go to rarestudy.html first.';
+  } else {
+    storedEl.textContent = storedUrl;
+    const urlToPlay = storedUrl;
+
+    // Check if native HLS supported (Safari)
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = urlToPlay;
+      video.muted = true; // required for auto-play in most browsers
+      video.play().catch(()=>console.log('Autoplay blocked by browser'));
+    } else if (window.Hls) {
+      const hls = new Hls();
+      hls.loadSource(urlToPlay);
+      hls.attachMedia(video);
+      window._hlsInst = hls;
+      hls.on(Hls.Events.MANIFEST_PARSED, function() {
+        video.play().catch(()=>console.log('Autoplay blocked by browser'));
+      });
+    } else {
+      storedEl.textContent += '\nHls.js not available. Include Hls.js for non-Safari browsers.';
+    }
+  }
+</script>
+</body>
+</html>
