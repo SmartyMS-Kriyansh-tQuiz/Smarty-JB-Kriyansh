@@ -1,87 +1,165 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Render Final CDN Link</title>
-<style>
-body{font-family:Inter,system-ui,Arial,sans-serif;background:#071025;color:#e6eef6;padding:20px;max-width:980px;margin:0 auto;}
-.card{background:#051423;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
-h1{margin:0 0 8px;font-size:20px;}
-pre{background:#02101a;padding:10px;border-radius:6px;overflow:auto;color:#bfeef2;max-height:200px;}
-.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
-button{padding:8px 10px;border-radius:6px;border:none;cursor:pointer;font-weight:600;}
-button.primary{background:#0ea5a9;color:#012;}
-button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb7b6;}
-video{width:100%;max-height:480px;border-radius:8px;margin-top:12px;background:#000;}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Powerd By Smarty MS</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 28px; background:#f4f6f8; color:#222; }
+    h1 { margin:0 0 18px; font-size:20px; background:linear-gradient(90deg,#0066ff,#0099ff); color:#fff; display:inline-block; padding:10px 18px; border-radius:8px; }
+    .card { background:#fff; max-width:720px; margin:20px auto; padding:18px; border-radius:10px; box-shadow:0 6px 20px rgba(10,20,40,0.06); text-align:left; }
+    label { display:block; font-weight:600; margin-bottom:6px; }
+    textarea,input { width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid #d7dbe0; font-size:14px; resize:vertical; }
+    .row { display:flex; gap:10px; margin-top:12px; }
+    .row button, .row a { flex:1; padding:12px; border-radius:8px; border:none; font-weight:700; cursor:pointer; text-decoration:none; color:#fff; text-align:center; }
+    .generate { background:#0066ff; } /* blue */
+    .copy { background:#00b894; } /* green */
+    .preview { background:#0984e3; }
+    .output { margin-top:14px; padding:10px; border-radius:8px; background:#f1f5f9; border:1px dashed #dbe7ff; word-break:break-all; }
+    .note { font-size:13px; color:#555; margin-top:10px; }
+    footer{ text-align:center; margin-top:16px; font-size:13px; color:#666; }
+  </style>
 </head>
 <body>
-<div class="card">
-<h1>Render Final CDN Link</h1>
-<div class="muted">This page reads the converted CDN link from <code>m3u8.html</code>, generates a final render link, and plays it in the browser.</div>
+  <h1>Powerd By Smarty MS</h1>
 
-<pre id="cdnLink">— loading converted CDN link —</pre>
-<pre id="renderLink">— final render link will appear here —</pre>
+  <div class="card">
+    <label for="inputUrl">Insert source URL (example: rarestudy.site link)</label>
+    <textarea id="inputUrl" rows="4">
+https://rarestudy.site/media/qSfbndpBRcy6217epv_DMtwLsFuWrT3qu2fTohvhPVnpW9cEtrR5Ox9W25iWpYZE84WnRUTQ_ctB3JCJa9ZecPRKdmc37rjqF1FP7O6D20w3AU7M5KLu9d36MjI4cGvxpdG3P3uLPWqc6YkBJZGDdFwNP0lcEQtNDv59xIvi4OWOMSDSU2Q3kbWy_T_A-sebGu5Y3Jc_7UII-hmGyInHCUzopWzwaZ879KXdfd4J4P3CnBa5bM--4U46JSF0JMxLwkQgGc9me8umjfesQ5hMNKeJjX8NdNi_9cDHs-_3OD8NRbtaSE8rP24ZXn8rqW8T5o4VdfhVUlqUl93AyoObrn3r2UX4EjMHZBghRZMTTdgOhfMhAB1fPpZwz7fuJWCt
+    </textarea>
 
-<div class="row">
-  <button id="generateBtn" class="primary">Generate Render Link</button>
-  <button id="copyBtn" class="ghost">Copy Render Link</button>
-</div>
+    <div class="row" style="margin-top:12px;">
+      <button class="generate" id="btnGenerate">Generate Now</button>
+      <button class="copy" id="btnCopy">Copy</button>
+    </div>
 
-<video id="videoPlayer" controls playsinline muted></video>
+    <div class="output" id="outputBox">Final link will appear here after generation.</div>
 
-<!-- Hls.js -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <div style="margin-top:10px;">
+      <a id="previewLink" class="preview" href="#" target="_blank" style="display:inline-block; padding:10px 14px; border-radius:8px; color:#fff;">Preview</a>
+    </div>
 
-<script>
-const STORAGE_KEY = 'm3u8_converted_url';
-const cdnEl = document.getElementById('cdnLink');
-const renderEl = document.getElementById('renderLink');
-const video = document.getElementById('videoPlayer');
+    <div class="note">
+      Notes: The tool tries to auto-extract the CDN URL (domain like <code>sec-prod-mediacdn.pw.live</code>) from the provided page. If extraction fails due to CORS or the page not containing the CDN link, paste the direct CDN URL (or a URL that contains <code>master.mpd</code>) and then click Generate. The script will replace <code>master.mpd</code> → <code>master.m3u8</code> and produce the final encoded play link.
+    </div>
+  </div>
 
-function getConvertedCDN() {
-  return localStorage.getItem(STORAGE_KEY) || '';
-}
+  <footer>© LEARN WITH JBKRIYANSH</footer>
 
-// Example render link generator (client-side safe)
-function generateRenderLink(cdnUrl){
-  if(!cdnUrl) return '';
-  // Here you can put your own render script logic; for demo, we just append ?rendered=true
-  return cdnUrl.includes('?') ? cdnUrl + '&rendered=true' : cdnUrl + '?rendered=true';
-}
+  <script>
+    const btnGenerate = document.getElementById('btnGenerate');
+    const btnCopy = document.getElementById('btnCopy');
+    const inputEl = document.getElementById('inputUrl');
+    const out = document.getElementById('outputBox');
+    const preview = document.getElementById('previewLink');
 
-// ---- Initialize ----
-const convertedUrl = getConvertedCDN();
-cdnEl.textContent = convertedUrl;
+    function makeFinalPlayerLink(m3u8) {
+      return 'https://learnwithpw-recorded.onrender.com/play?v=' + encodeURIComponent(m3u8);
+    }
 
-document.getElementById('generateBtn').addEventListener('click', ()=>{
-  if(!convertedUrl){ alert('No converted CDN link found. Go to m3u8.html first.'); return; }
-  const renderLink = generateRenderLink(convertedUrl);
-  renderEl.textContent = renderLink;
-  localStorage.setItem('final_render_link', renderLink);
+    function replaceMpdToM3u8(u) {
+      try {
+        return u.replace(/master\.mpd/gi, 'master.m3u8');
+      } catch(e) { return u; }
+    }
 
-  // ---- Play in video ----
-  if(video.canPlayType('application/vnd.apple.mpegurl')){
-    video.src = renderLink;
-    video.play().catch(()=>console.log('Autoplay blocked by browser'));
-  } else if(window.Hls){
-    if(window._hlsInst) window._hlsInst.destroy();
-    const hls = new Hls();
-    window._hlsInst = hls;
-    hls.loadSource(renderLink);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play().catch(()=>console.log('Autoplay blocked')));
-  } else {
-    alert('Hls.js not loaded; include Hls.js for non-Safari browsers');
-  }
-});
+    function extractSecProdUrlFromText(text) {
+      if (!text) return null;
+      // look for sec-prod-mediacdn url (basic)
+      const re = /(https?:\/\/sec-prod-mediacdn\.pw\.live\/[^\s"'<>]+)/i;
+      const m = text.match(re);
+      if (m && m[1]) return m[1];
+      // sometimes it's encoded in URLPrefix or elsewhere; try to find master.[mpd|m3u8] pattern
+      const re2 = /(https?:\/\/[^\s"'<>]*master\.(?:mpd|m3u8)[^\s"'<>]*)/i;
+      const m2 = text.match(re2);
+      if (m2 && m2[1]) return m2[1];
+      return null;
+    }
 
-document.getElementById('copyBtn').addEventListener('click', ()=>{
-  const renderLink = localStorage.getItem('final_render_link');
-  if(!renderLink) return alert('No render link generated yet.');
-  navigator.clipboard.writeText(renderLink).then(()=>alert('Render link copied to clipboard'));
-});
-</script>
+    async function tryFetchAndExtract(url) {
+      try {
+        const resp = await fetch(url, { method:'GET' });
+        if (!resp || !resp.ok) return null;
+        const txt = await resp.text();
+        return extractSecProdUrlFromText(txt);
+      } catch (e) {
+        // likely CORS or network error
+        return null;
+      }
+    }
+
+    async function generate() {
+      out.textContent = 'Working...';
+      preview.href = '#';
+      preview.style.display = 'inline-block';
+      let val = inputEl.value.trim();
+      if (!val) { alert('Please paste a URL first'); out.textContent = 'No input'; return; }
+
+      // If the user pasted a page URL, try to find the CDN link inside the string first:
+      let candidate = extractSecProdUrlFromText(val);
+
+      // If not found, and input looks like a normal page URL, attempt fetch (may be blocked by CORS)
+      if (!candidate) {
+        // If input itself contains master.mpd or master.m3u8 or sec-prod domain, treat it as direct CDN-ish
+        if (/(master\.(mpd|m3u8))/i.test(val) || /sec-prod-mediacdn\.pw\.live/i.test(val)) {
+          candidate = val;
+        } else {
+          // try fetching the page to extract (best-effort)
+          const extracted = await tryFetchAndExtract(val);
+          if (extracted) candidate = extracted;
+        }
+      }
+
+      if (!candidate) {
+        // fallback: if input contains master.mpd replace to .m3u8 and use it
+        if (/master\.mpd/i.test(val)) {
+          candidate = val;
+        } else {
+          out.textContent = 'Could not auto-extract CDN link. Please paste the direct CDN URL (or a URL containing master.mpd).';
+          alert('Extraction failed — paste the direct CDN URL (or a URL containing master.mpd).');
+          return;
+        }
+      }
+
+      // ensure we convert mpd -> m3u8
+      const m3u8 = replaceMpdToM3u8(candidate);
+
+      // If the m3u8 doesn't have "master.m3u8" but has query with URLPrefix pointing to encoded path that ultimately references sec-prod, still fine — we only change the filename
+      const final = makeFinalPlayerLink(m3u8);
+
+      out.textContent = final;
+      preview.href = final;
+      preview.innerText = 'Preview';
+      alert('Link Generated ✅');
+    }
+
+    btnGenerate.addEventListener('click', generate);
+
+    btnCopy.addEventListener('click', async () => {
+      const text = out.textContent && out.textContent.startsWith('http') ? out.textContent : '';
+      if (!text) { alert('No generated link to copy. Click Generate Now first.'); return; }
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('Link copied ✅');
+      } catch (e) {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); alert('Link copied ✅'); } catch(err) { alert('Copy failed — select and copy manually.'); }
+        ta.remove();
+      }
+    });
+
+    // small UX: allow Ctrl+Enter to generate
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        generate();
+      }
+    });
+  </script>
 </body>
 </html>
