@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Media Sniffer — Bookmark Integration</title>
+<style>
+  body{font-family:Inter,system-ui,Arial,sans-serif;background:#071025;color:#e6eef6;padding:20px;max-width:980px;margin:0 auto;}
+  .card{background:#051423;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
+  h1{margin:0 0 8px;font-size:20px;}
+  pre{background:#02101a;padding:10px;border-radius:6px;overflow:auto;color:#bfeef2;max-height:200px;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  button{padding:8px 10px;border-radius:6px;border:none;cursor:pointer;font-weight:600;}
+  button.primary{background:#0ea5a9;color:#012;}
+  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb7b6;}
+  #videoPlayer{width:100%;max-height:480px;border-radius:8px;margin-top:12px;background:#000;}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Media Sniffer Page</h1>
+<div class="muted">This page auto-runs your Media Sniffer script to capture CDN links from the URL stored in <code>rarestudy.html</code>. Click any captured link to play in the video below (auto-play allowed for safe content).</div>
+
+<pre id="storedUrl">— loading stored URL —</pre>
+
+<div class="row">
+  <button id="refreshBtn" class="primary">Load Stored URL</button>
+  <button id="clearList" class="ghost">Clear Sniffer List</button>
+</div>
+
+<pre id="mediaList">— captured media links will appear here —</pre>
+
+<video id="videoPlayer" controls playsinline muted></video>
+</div>
+
+<script>
+  // ---- Load stored URL from rarestudy.html ----
+  const STORAGE_KEY = 'rarestudy_video_url';
+  const storedEl = document.getElementById('storedUrl');
+  const mediaListEl = document.getElementById('mediaList');
+  const video = document.getElementById('videoPlayer');
+  let capturedUrls = [];
+
+  function loadStoredUrl() {
+    const url = localStorage.getItem(STORAGE_KEY);
+    if (!url) storedEl.textContent = 'No stored URL found. Go to rarestudy.html first.';
+    else storedEl.textContent = url;
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', ()=>{loadStoredUrl(); initSniffer();});
+  document.getElementById('clearList').addEventListener('click', ()=>{capturedUrls=[]; renderList();});
+
+  loadStoredUrl();
+
+  // ---- Media Sniffer Script Integration (from your bookmarklet) ----
+  function initSniffer(){
+    function copyToClipboard(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>console.log('Copied'));}else{var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');}catch(e){console.warn(e);}a.remove();}}
+    function addFound(u){
+      if(!capturedUrls.includes(u)) capturedUrls.unshift(u);
+      renderList();
+      console.log('[Media Sniffer]',u);
+    }
+    function checkForMedia(url){
+      try{if(!url)return;var l=url.toLowerCase();if(l.includes('.m3u8')||l.includes('.mp4')||l.includes('.mpd')||l.includes('master.m3u8'))addFound(url);}catch(e){}
+    }
+
+    // ---- Hook XHR ----
+    (function(){
+      var o=XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open=function(m,u){this.ms_url=u;return o.apply(this,arguments);}
+      var s=XMLHttpRequest.prototype.send;
+      XMLHttpRequest.prototype.send=function(){
+        this.addEventListener('load',function(){try{checkForMedia(this.ms_url||this.responseURL);}catch(e){}});
+        return s.apply(this,arguments);
+      };
+    })();
+
+    // ---- Hook fetch ----
+    (function(){
+      var f=window.fetch;
+      window.fetch=function(input,init){
+        var maybe=(typeof input==='string')?input:(input&&input.url);
+        checkForMedia(maybe);
+        return f.call(this,input,init).then(function(resp){
+          try{var u=(typeof input==='string')?input:(input&&input.url);checkForMedia(u||resp.url);}catch(e){}
+          return resp;
+        });
+      };
+    })();
+
+    // ---- Inspect video tags ----
+    function inspectVideo(el){
+      try{
+        if(el.currentSrc) checkForMedia(el.currentSrc);
+        if(el.src) checkForMedia(el.src);
+        var ss=el.querySelectorAll?el.querySelectorAll('source'):[]; ss.forEach(s=>checkForMedia(s.getAttribute('src')));
+        el.addEventListener('play',()=>checkForMedia(el.currentSrc||el.src),false);
+      }catch(e){}
+    }
+    document.querySelectorAll('video').forEach(inspectVideo);
+
+    var mo=new MutationObserver(function(m){
+      m.forEach(function(r){
+        if(r.addedNodes) r.addedNodes.forEach(function(n){if(n.tagName==='VIDEO') inspectVideo(n); if(n.querySelectorAll) n.querySelectorAll('video').forEach(inspectVideo);});
+        if(r.type==='attributes'&&(r.attributeName==='src'||r.attributeName==='currentSrc')){
+          var t=r.target; if(t&&(t.tagName==='VIDEO'||t.tagName==='SOURCE')) inspectVideo(t.tagName==='SOURCE'?t.parentElement:t);
+        }
+      });
+    });
+    mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['src','currentSrc']});
+
+    try{(performance.getEntries?performance.getEntries():[]).forEach(e=>{if(e.name) checkForMedia(e.name);});}catch(e){}
+    console.log('[Media Sniffer] running');
+  }
+
+  // ---- Render Captured URLs ----
+  function renderList(){
+    if(!capturedUrls.length){mediaListEl.textContent='— captured media links will appear here —'; return;}
+    mediaListEl.innerHTML='';
+    capturedUrls.forEach(u=>{
+      const div=document.createElement('div');
+      div.style.marginBottom='6px';
+      div.innerHTML=`<div style="word-break:break-all">${u}</div>
+      <div style="margin-top:4px"><button style="padding:2px 6px;border-radius:4px;cursor:pointer;background:green;color:#fff;">Play</button> <button style="padding:2px 6px;border-radius:4px;cursor:pointer;">Copy</button></div>`;
+      const playBtn=div.querySelector('button:nth-child(1)');
+      const copyBtn=div.querySelector('button:nth-child(2)');
+      playBtn.onclick=()=>{video.src=u; video.play().catch(()=>console.log('Autoplay blocked'));};
+      copyBtn.onclick=()=>copyToClipboard(u);
+      mediaListEl.appendChild(div);
+    });
+  }
+
+  // ---- Init ----
+  initSniffer();
+</script>
+</body>
+</html>
