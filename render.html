@@ -12,8 +12,8 @@
     textarea,input { width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid #d7dbe0; font-size:14px; resize:vertical; }
     .row { display:flex; gap:10px; margin-top:12px; }
     .row button, .row a { flex:1; padding:12px; border-radius:8px; border:none; font-weight:700; cursor:pointer; text-decoration:none; color:#fff; text-align:center; }
-    .generate { background:#0066ff; } /* blue */
-    .copy { background:#00b894; } /* green */
+    .generate { background:#0066ff; }
+    .copy { background:#00b894; }
     .preview { background:#0984e3; }
     .output { margin-top:14px; padding:10px; border-radius:8px; background:#f1f5f9; border:1px dashed #dbe7ff; word-break:break-all; }
     .note { font-size:13px; color:#555; margin-top:10px; }
@@ -25,9 +25,7 @@
 
   <div class="card">
     <label for="inputUrl">Insert source URL (example: rarestudy.site link)</label>
-    <textarea id="inputUrl" rows="4">
-https://rarestudy.site/media/qSfbndpBRcy6217epv_DMtwLsFuWrT3qu2fTohvhPVnpW9cEtrR5Ox9W25iWpYZE84WnRUTQ_ctB3JCJa9ZecPRKdmc37rjqF1FP7O6D20w3AU7M5KLu9d36MjI4cGvxpdG3P3uLPWqc6YkBJZGDdFwNP0lcEQtNDv59xIvi4OWOMSDSU2Q3kbWy_T_A-sebGu5Y3Jc_7UII-hmGyInHCUzopWzwaZ879KXdfd4J4P3CnBa5bM--4U46JSF0JMxLwkQgGc9me8umjfesQ5hMNKeJjX8NdNi_9cDHs-_3OD8NRbtaSE8rP24ZXn8rqW8T5o4VdfhVUlqUl93AyoObrn3r2UX4EjMHZBghRZMTTdgOhfMhAB1fPpZwz7fuJWCt
-    </textarea>
+    <textarea id="inputUrl" rows="4"></textarea>
 
     <div class="row" style="margin-top:12px;">
       <button class="generate" id="btnGenerate">Generate Now</button>
@@ -41,7 +39,7 @@ https://rarestudy.site/media/qSfbndpBRcy6217epv_DMtwLsFuWrT3qu2fTohvhPVnpW9cEtrR
     </div>
 
     <div class="note">
-      Notes: The tool tries to auto-extract the CDN URL (domain like <code>sec-prod-mediacdn.pw.live</code>) from the provided page. If extraction fails due to CORS or the page not containing the CDN link, paste the direct CDN URL (or a URL that contains <code>master.mpd</code>) and then click Generate. The script will replace <code>master.mpd</code> → <code>master.m3u8</code> and produce the final encoded play link.
+      Notes: The tool auto-extracts CDN (<code>sec-prod-mediacdn.pw.live</code>). If fails, paste direct CDN link containing <code>master.mpd</code>.
     </div>
   </div>
 
@@ -54,78 +52,61 @@ https://rarestudy.site/media/qSfbndpBRcy6217epv_DMtwLsFuWrT3qu2fTohvhPVnpW9cEtrR
     const out = document.getElementById('outputBox');
     const preview = document.getElementById('previewLink');
 
+    function getQuery(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    // auto-fill if coming from cutcdn.html
+    const autoSrc = getQuery("src");
+    if (autoSrc) inputEl.value = decodeURIComponent(autoSrc);
+
     function makeFinalPlayerLink(m3u8) {
       return 'https://learnwithpw-recorded.onrender.com/play?v=' + encodeURIComponent(m3u8);
     }
-
     function replaceMpdToM3u8(u) {
-      try {
-        return u.replace(/master\.mpd/gi, 'master.m3u8');
-      } catch(e) { return u; }
+      return u.replace(/master\.mpd/gi, 'master.m3u8');
     }
-
     function extractSecProdUrlFromText(text) {
       if (!text) return null;
-      // look for sec-prod-mediacdn url (basic)
       const re = /(https?:\/\/sec-prod-mediacdn\.pw\.live\/[^\s"'<>]+)/i;
       const m = text.match(re);
       if (m && m[1]) return m[1];
-      // sometimes it's encoded in URLPrefix or elsewhere; try to find master.[mpd|m3u8] pattern
       const re2 = /(https?:\/\/[^\s"'<>]*master\.(?:mpd|m3u8)[^\s"'<>]*)/i;
       const m2 = text.match(re2);
       if (m2 && m2[1]) return m2[1];
       return null;
     }
-
     async function tryFetchAndExtract(url) {
       try {
-        const resp = await fetch(url, { method:'GET' });
-        if (!resp || !resp.ok) return null;
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
         const txt = await resp.text();
         return extractSecProdUrlFromText(txt);
-      } catch (e) {
-        // likely CORS or network error
-        return null;
-      }
+      } catch(e) { return null; }
     }
-
     async function generate() {
       out.textContent = 'Working...';
       preview.href = '#';
-      preview.style.display = 'inline-block';
       let val = inputEl.value.trim();
-      if (!val) { alert('Please paste a URL first'); out.textContent = 'No input'; return; }
+      if (!val) { alert('Please paste a URL first'); return; }
 
-      // If the user pasted a page URL, try to find the CDN link inside the string first:
       let candidate = extractSecProdUrlFromText(val);
-
-      // If not found, and input looks like a normal page URL, attempt fetch (may be blocked by CORS)
       if (!candidate) {
-        // If input itself contains master.mpd or master.m3u8 or sec-prod domain, treat it as direct CDN-ish
         if (/(master\.(mpd|m3u8))/i.test(val) || /sec-prod-mediacdn\.pw\.live/i.test(val)) {
           candidate = val;
         } else {
-          // try fetching the page to extract (best-effort)
           const extracted = await tryFetchAndExtract(val);
           if (extracted) candidate = extracted;
         }
       }
-
       if (!candidate) {
-        // fallback: if input contains master.mpd replace to .m3u8 and use it
-        if (/master\.mpd/i.test(val)) {
-          candidate = val;
-        } else {
-          out.textContent = 'Could not auto-extract CDN link. Please paste the direct CDN URL (or a URL containing master.mpd).';
-          alert('Extraction failed — paste the direct CDN URL (or a URL containing master.mpd).');
-          return;
-        }
+        out.textContent = 'Could not extract CDN link.';
+        alert('Extraction failed — paste direct CDN URL.');
+        return;
       }
 
-      // ensure we convert mpd -> m3u8
       const m3u8 = replaceMpdToM3u8(candidate);
-
-      // If the m3u8 doesn't have "master.m3u8" but has query with URLPrefix pointing to encoded path that ultimately references sec-prod, still fine — we only change the filename
       const final = makeFinalPlayerLink(m3u8);
 
       out.textContent = final;
@@ -133,31 +114,15 @@ https://rarestudy.site/media/qSfbndpBRcy6217epv_DMtwLsFuWrT3qu2fTohvhPVnpW9cEtrR
       preview.innerText = 'Preview';
       alert('Link Generated ✅');
     }
-
     btnGenerate.addEventListener('click', generate);
-
     btnCopy.addEventListener('click', async () => {
-      const text = out.textContent && out.textContent.startsWith('http') ? out.textContent : '';
-      if (!text) { alert('No generated link to copy. Click Generate Now first.'); return; }
+      const text = out.textContent.startsWith('http') ? out.textContent : '';
+      if (!text) { alert('No generated link'); return; }
       try {
         await navigator.clipboard.writeText(text);
         alert('Link copied ✅');
       } catch (e) {
-        // fallback
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand('copy'); alert('Link copied ✅'); } catch(err) { alert('Copy failed — select and copy manually.'); }
-        ta.remove();
-      }
-    });
-
-    // small UX: allow Ctrl+Enter to generate
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        generate();
+        prompt("Copy manually:", text);
       }
     });
   </script>
