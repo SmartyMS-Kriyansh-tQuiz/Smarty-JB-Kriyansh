@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>M3U8 Converter — Cut CDN Link</title>
+<style>
+body{font-family:Inter,system-ui,Arial,sans-serif;background:#071025;color:#e6eef6;padding:20px;max-width:980px;margin:0 auto;}
+.card{background:#051423;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
+h1{margin:0 0 8px;font-size:20px;}
+pre{background:#02101a;padding:10px;border-radius:6px;overflow:auto;color:#bfeef2;max-height:200px;}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+button{padding:8px 10px;border-radius:6px;border:none;cursor:pointer;font-weight:600;}
+button.primary{background:#0ea5a9;color:#012;}
+button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb7b6;}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>M3U8 Converter — Replace Extensions</h1>
+<div class="muted">This page converts the selected CDN link from <code>cutcdn.html</code> to .m3u8 format by replacing only mp4 or mpd as per rules. The rest of the URL remains unchanged.</div>
+
+<pre id="original">— loading selected CDN link —</pre>
+<pre id="converted">— converted link will appear here —</pre>
+
+<div class="row">
+  <button id="convertBtn" class="primary">Convert to M3U8</button>
+  <button id="copyBtn" class="ghost">Copy Converted Link</button>
+</div>
+
+<script>
+const STORAGE_FINAL_KEY = 'cutcdn_selected_url';
+const originalEl = document.getElementById('original');
+const convertedEl = document.getElementById('converted');
+
+function getSelectedCDN() {
+  return localStorage.getItem(STORAGE_FINAL_KEY) || '';
+}
+
+function convertToM3u8(url) {
+  if(!url) return '';
+  return url
+    .replace(/\/master\.mpd\?/gi,'/master.m3u8?')
+    .replace(/\/dash\/720\/4\.mp4\?/gi,'/master.m3u8?')
+    .replace(/\/dash\/audio\/4\.mp4\?/gi,'/master.m3u8?');
+}
+
+// ---- Initialize ----
+const selectedUrl = getSelectedCDN();
+originalEl.textContent = selectedUrl;
+
+document.getElementById('convertBtn').addEventListener('click', ()=>{
+  if(!selectedUrl){ alert('No CDN link found. Go to cutcdn.html first.'); return; }
+  const converted = convertToM3u8(selectedUrl);
+  convertedEl.textContent = converted;
+  localStorage.setItem('m3u8_converted_url', converted);
+});
+
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  const text = convertedEl.textContent;
+  if(!text){ alert('No converted link available. Click Convert first.'); return; }
+  navigator.clipboard.writeText(text).then(()=>alert('Copied converted link to clipboard'));
+});
+</script>
+</body>
+</html>
