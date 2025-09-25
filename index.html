@@ -1,100 +1,204 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LEARN WITH JBKRIYANSH — RareStudy Media</title>
-<style>
-body{font-family:Inter,system-ui,Arial,sans-serif;background:#f0f4f8;margin:0;padding:20px;display:flex;justify-content:center;align-items:center;min-height:100vh;}
-.container{background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.15);padding:20px;max-width:400px;width:100%;text-align:center;}
-h1{background:linear-gradient(90deg,#2563eb,#3b82f6);color:#fff;padding:12px;border-radius:8px;margin-bottom:20px;font-size:22px;}
-input{width:100%;padding:12px;border-radius:6px;border:1px solid #ccc;margin-bottom:12px;font-size:16px;}
-button{width:100%;padding:12px;border:none;border-radius:6px;color:#fff;font-weight:600;font-size:16px;margin:6px 0;cursor:pointer;}
-button.generate{background:#10b981;}
-button.copy{background:#14b8a6;}
-button.preview{background:#2563eb;}
-button.refresh{background:#8b5cf6;}
-button.back{background:#ef4444;}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Flow Dashboard — LEARN WITH JBKRIYANSH</title>
+  <style>
+    :root{--bg:#f6fafb;--card:#fff;--accent:#10b981;--muted:#64748b}
+    body{font-family:Inter,system-ui,Arial,sans-serif;background:linear-gradient(180deg,#eef2ff,#f8fafc);padding:24px;color:#0f1724}
+    .wrap{max-width:820px;margin:0 auto;background:var(--card);padding:20px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.08)}
+    h1{margin:0 0 8px;font-size:20px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    button{padding:10px 14px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
+    .primary{background:var(--accent);color:white}
+    .ghost{background:transparent;border:1px solid rgba(15,23,36,0.06)}
+    pre{background:#0f1724;color:#dff3ee;padding:10px;border-radius:8px;overflow:auto}
+    label{font-size:13px;color:var(--muted)}
+  </style>
 </head>
 <body>
-<div class="container">
-<h1>LEARN WITH JBKRIYANSH</h1>
-<label>🎬 RECORDED</label>
-<input type="text" id="rareUrl" placeholder="https://rarestudy.site/media/...">
-<button class="generate" id="generateBtn">Generate</button>
-<button class="copy" id="copyBtn">Copy</button>
-<button class="preview" id="previewBtn">Preview</button>
-<button class="refresh" id="refreshBtn">Refresh</button>
-<button class="back" id="backBtn">← Back</button>
-<pre id="finalLink" style="background:#f1f5f9;padding:10px;border-radius:6px;margin-top:12px;overflow-x:auto;"></pre>
-</div>
+  <div class="wrap">
+    <h1>LEARN WITH JBKRIYANSH — Flow Dashboard</h1>
+    <p class="lead" style="color:var(--muted)">Use this page to run the full flow (store → convert → render). It reads/writes the same localStorage keys used by your other pages.</p>
+
+    <label>Detected stored RareStudy URL:</label>
+    <pre id="stored">— checking localStorage —</pre>
+
+    <div class="row">
+      <button id="openRarestudy" class="ghost">Open rarestudy.html</button>
+      <button id="openBypass" class="ghost">Open bypass.html</button>
+      <button id="openBookmark" class="ghost">Open bookmark.html</button>
+      <button id="openRender" class="ghost">Open render.html</button>
+    </div>
+
+    <div class="row" style="margin-top:14px">
+      <button id="runFull" class="primary">Run Full Flow (Auto)</button>
+      <button id="runConvert" class="ghost">Run Convert Only</button>
+      <button id="clearAll" class="ghost">Clear Keys</button>
+    </div>
+
+    <div style="margin-top:12px">
+      <label>Flow log / preview:</label>
+      <pre id="log">— idle —</pre>
+    </div>
+
+    <div style="margin-top:12px">
+      <label>Final render link (localStorage.final_render_link):</label>
+      <pre id="final">— none —</pre>
+    </div>
+
+  </div>
 
 <script>
-// ---- STORAGE KEYS ----
-const STORAGE_RARESTUDY = 'rarestudy_video_url';
-const STORAGE_CDN_FINAL = 'final_render_link';
+  // Keys (consistent with your other files)
+  const KEY_RAW = 'rarestudy_video_url';
+  const KEY_BOOKMARK = 'bookmark_captured_urls'; // optional array
+  const KEY_CUT = 'cutcdn_selected_url';
+  const KEY_M3U8 = 'm3u8_converted_url';
+  const KEY_FINAL = 'final_render_link';
 
-const rareInput = document.getElementById('rareUrl');
-const finalLinkEl = document.getElementById('finalLink');
+  const storedEl = document.getElementById('stored');
+  const logEl = document.getElementById('log');
+  const finalEl = document.getElementById('final');
 
-// ---- GENERATE FLOW ----
-document.getElementById('generateBtn').addEventListener('click', ()=>{
-  const url = rareInput.value.trim();
-  if(!url) return alert('Enter RareStudy URL first.');
-  // Step 1: store in rarestudy.html storage
-  localStorage.setItem(STORAGE_RARESTUDY, url);
+  function writeLog(...parts){ const s = parts.join(' '); logEl.textContent = s; console.log(s); }
+  function refreshUI(){
+    const s = localStorage.getItem(KEY_RAW);
+    storedEl.textContent = s || '— no stored URL —';
+    finalEl.textContent = localStorage.getItem(KEY_FINAL) || '— none —';
+  }
 
-  // Step 2: simulate flow through other pages
-  // You can navigate or run scripts here programmatically if needed
-  // For demo, we just run the final render.html flow
+  // conversion rules (same as your m3u8.html logic)
+  function convertToM3u8(url) {
+    if(!url) return '';
+    let out = url;
+    out = out.replace(/\/master\.mpd(\b|$)/i, '/master.m3u8');
+    out = out.replace(/\/master\.mpd\?/i, '/master.m3u8?');
+    out = out.replace(/\/dash\/720\/4\.mp4(\b|$)/i, '/master.m3u8');
+    out = out.replace(/\/dash\/720\/4\.mp4\?/i, '/master.m3u8?');
+    out = out.replace(/\/dash\/audio\/4\.mp4(\b|$)/i, '/master.m3u8');
+    out = out.replace(/\/dash\/audio\/4\.mp4\?/i, '/master.m3u8?');
+    return out;
+  }
 
-  // Open bypass.html (safe content) - optional
-  // Open autoplay.html to load video
-  // Open bookmark.html to capture CDN links
-  // Open cutcdn.html to pick single CDN link
-  // Open m3u8.html to replace mp4/mpd → m3u8
-  // Open render.html to generate final render link
+  // choose a CDN link if bookmark captured array exists
+  function pickFromBookmarks(){
+    try {
+      const arr = JSON.parse(localStorage.getItem(KEY_BOOKMARK) || '[]');
+      if(Array.isArray(arr) && arr.length) return arr[0]; // pick first by default
+    } catch(e){}
+    return null;
+  }
 
-  // Here, we simulate final link retrieval
-  setTimeout(()=>{
-    const finalUrl = localStorage.getItem(STORAGE_CDN_FINAL) || '— No final render link yet. Run full flow first.';
-    finalLinkEl.textContent = finalUrl;
-    alert('Render link ready!');
-  },500); // simulate async processing
-});
+  // Run the transform chain:
+  // priority:
+  // 1) if final_render_link exists => nothing
+  // 2) if m3u8_converted_url exists => use that to build final
+  // 3) if cutcdn_selected_url exists => convert that
+  // 4) if bookmark array exists => pick first and convert
+  // 5) fallback: convert raw rarestudy url directly
+  function runFullFlow(){
+    writeLog('Starting full flow...');
+    let final = localStorage.getItem(KEY_FINAL);
+    if(final){
+      writeLog('Final already exists. Overwriting new final...');
+    }
 
-// ---- COPY FINAL LINK ----
-document.getElementById('copyBtn').addEventListener('click', ()=>{
-  const text = finalLinkEl.textContent;
-  if(!text) return alert('No render link to copy.');
-  navigator.clipboard.writeText(text).then(()=>alert('Copied render link!'));
-});
+    let conv = localStorage.getItem(KEY_M3U8) || '';
+    if(conv){
+      writeLog('Using existing converted m3u8:', conv);
+    } else {
+      // try cutcdn
+      let selected = localStorage.getItem(KEY_CUT) || '';
+      if(selected){
+        writeLog('Using cutcdn_selected_url:', selected);
+      } else {
+        const fromBookmark = pickFromBookmarks();
+        if(fromBookmark){
+          selected = fromBookmark;
+          writeLog('Picked from bookmarks:', selected);
+        }
+      }
 
-// ---- PREVIEW FINAL LINK ----
-document.getElementById('previewBtn').addEventListener('click', ()=>{
-  const text = finalLinkEl.textContent;
-  if(!text) return alert('No render link to preview.');
-  window.open(text,'_blank');
-});
+      if(selected){
+        conv = convertToM3u8(selected);
+        writeLog('Converted selected ->', conv);
+        localStorage.setItem(KEY_M3U8, conv);
+      }
+    }
 
-// ---- REFRESH ----
-document.getElementById('refreshBtn').addEventListener('click', ()=>{
-  location.reload();
-});
+    if(!conv){
+      // fallback: try converting the raw pasted link
+      const raw = localStorage.getItem(KEY_RAW);
+      if(!raw){
+        writeLog('No raw URL found. Please open rarestudy.html and paste URL first.');
+        refreshUI();
+        return;
+      }
+      conv = convertToM3u8(raw);
+      writeLog('Converted raw rarestudy url ->', conv);
+      localStorage.setItem(KEY_M3U8, conv);
+    }
 
-// ---- BACK ----
-document.getElementById('backBtn').addEventListener('click', ()=>{
-  window.history.back();
-});
+    // generate a final render link (client-side safe; append param)
+    const renderLink = conv ? (conv.includes('?') ? conv + '&rendered=true' : conv + '?rendered=true') : '';
+    if(!renderLink){
+      writeLog('Conversion failed; no render link produced.');
+      refreshUI();
+      return;
+    }
+    localStorage.setItem(KEY_FINAL, renderLink);
+    writeLog('Final render link generated:', renderLink);
+    refreshUI();
 
-// ---- LOAD STORED URL IF ANY ----
-const storedUrl = localStorage.getItem(STORAGE_RARESTUDY);
-if(storedUrl) rareInput.value = storedUrl;
+    // open render.html in a new tab (user sees playback)
+    const renderPath = 'render.html';
+    try { window.open(renderPath, '_blank'); } catch(e) { writeLog('Could not open render.html automatically.'); }
+  }
 
-// ---- LOAD FINAL LINK IF EXISTS ----
-const storedFinal = localStorage.getItem(STORAGE_CDN_FINAL);
-if(storedFinal) finalLinkEl.textContent = storedFinal;
+  // Run Convert Only (same as core convert step)
+  function runConvertOnly(){
+    writeLog('Running convert-only...');
+    let conv = localStorage.getItem(KEY_M3U8) || '';
+    if(conv){ writeLog('Existing converted:', conv); refreshUI(); return; }
+
+    // prefer cutcdn_selected, then bookmark, then raw
+    let selected = localStorage.getItem(KEY_CUT) || '';
+    if(!selected){
+      selected = pickFromBookmarks() || '';
+    }
+    if(!selected) selected = localStorage.getItem(KEY_RAW) || '';
+
+    if(!selected){ writeLog('No input found to convert.'); refreshUI(); return; }
+
+    conv = convertToM3u8(selected);
+    localStorage.setItem(KEY_M3U8, conv);
+    writeLog('Converted ->', conv);
+    refreshUI();
+  }
+
+  // Buttons
+  document.getElementById('runFull').addEventListener('click', runFullFlow);
+  document.getElementById('runConvert').addEventListener('click', runConvertOnly);
+  document.getElementById('clearAll').addEventListener('click', ()=>{
+    if(!confirm('Clear keys: rarestudy_video_url, bookmark_captured_urls, cutcdn_selected_url, m3u8_converted_url, final_render_link ?')) return;
+    localStorage.removeItem(KEY_RAW);
+    localStorage.removeItem(KEY_BOOKMARK);
+    localStorage.removeItem(KEY_CUT);
+    localStorage.removeItem(KEY_M3U8);
+    localStorage.removeItem(KEY_FINAL);
+    writeLog('Cleared keys.');
+    refreshUI();
+  });
+
+  document.getElementById('openRarestudy').addEventListener('click', ()=>window.open('rarestudy.html','_blank'));
+  document.getElementById('openBypass').addEventListener('click', ()=>window.open('bypass.html','_blank'));
+  document.getElementById('openBookmark').addEventListener('click', ()=>window.open('bookmark.html','_blank'));
+  document.getElementById('openRender').addEventListener('click', ()=>window.open('render.html','_blank'));
+
+  // init UI
+  refreshUI();
 </script>
 </body>
 </html>
