@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bypass (CORS-safe) — Read from RareStudy</title>
+  <style>
+    body{font-family:Inter,system-ui,Arial,sans-serif;background:#071025;color:#e6eef6;padding:20px;max-width:980px;margin:0 auto;}
+    .card{background:#051423;padding:18px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    h1{margin:0 0 8px;font-size:20px}
+    label{display:block;margin-top:12px;color:#9fb7b6}
+    input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:#dff;}
+    .row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    button{padding:10px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:600}
+    button.primary{background:#0ea5a9;color:#012}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#9fb7b6}
+    video{width:100%;margin-top:12px;border-radius:8px;background:#000;max-height:520px}
+    pre{background:#02101a;padding:10px;border-radius:6px;overflow:auto;color:#bfeef2}
+    .muted{color:#9ca3af;font-size:13px;margin-top:8px}
+    .warn{color:#ffd6d6;background:rgba(255,20,20,0.04);padding:8px;border-radius:6px;margin-top:12px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Bypass (CORS-safe) — Proxy Player</h1>
+    <div class="muted">This page reads the URL saved by <code>rarestudy.html</code> (localStorage key <code>rarestudy_video_url</code>) or you can paste a URL manually. It plays via your server proxy at <code>/proxy?url=...</code>. <strong>It does NOT remove or bypass DRM.</strong></div>
+
+    <label>Detected stored URL (from rarestudy.html):</label>
+    <pre id="detected">— checking localStorage —</pre>
+
+    <label for="manualUrl">Or paste URL manually (master.m3u8 / CDN manifest):</label>
+    <input id="manualUrl" type="text" placeholder="https://.../master.m3u8?token=..." />
+
+    <div class="row">
+      <button id="useStored" class="primary">Use Stored URL</button>
+      <button id="playBtn" class="primary">Play via Proxy</button>
+      <button id="copyBtn" class="ghost">Copy Proxy Link</button>
+      <button id="openBtn" class="ghost">Open Proxy Link</button>
+    </div>
+
+    <label>Proxy link preview (safe for browser):</label>
+    <pre id="proxyPreview">— none —</pre>
+
+    <div class="warn">
+      <strong>Important:</strong>
+      <ul>
+        <li>This client requires a server-side proxy endpoint at <code>/proxy?url=ENCODED_URL</code> that you run on your server (see earlier Express example).</li>
+        <li>If the manifest is DRM-protected (Widevine/PlayReady/etc.) you must use a proper DRM player + license server (EME). This page cannot and will not remove DRM.</li>
+      </ul>
+    </div>
+
+    <video id="video" controls playsinline></video>
+    <div class="muted">If audio/video doesn't play on desktop, include Hls.js (already loaded below).</div>
+  </div>
+
+  <!-- Hls.js CDN (for non-Safari browsers). Host locally if required. -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+  <script>
+    // Config: localStorage key used by rarestudy.html
+    const STORAGE_KEY = 'rarestudy_video_url';
+
+    // UI elements
+    const detectedEl = document.getElementById('detected');
+    const manualInput = document.getElementById('manualUrl');
+    const useStoredBtn = document.getElementById('useStored');
+    const playBtn = document.getElementById('playBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const openBtn = document.getElementById('openBtn');
+    const proxyPreview = document.getElementById('proxyPreview');
+    const video = document.getElementById('video');
+
+    // Utility: build proxy URL (your server must implement /proxy)
+    function buildProxyUrl(remote) {
+      return '/proxy?url=' + encodeURIComponent(remote);
+    }
+
+    // Load stored value from localStorage
+    function loadStored() {
+      const v = localStorage.getItem(STORAGE_KEY);
+      if (v) {
+        detectedEl.textContent = v;
+        manualInput.value = v;
+      } else {
+        detectedEl.textContent = '— no stored URL found under key ' + STORAGE_KEY + ' —';
+      }
+      updatePreview();
+    }
+
+    // Update preview when manual input changes
+    function updatePreview() {
+      const val = manualInput.value.trim();
+      if (!val) { proxyPreview.textContent = '— none —'; return; }
+      proxyPreview.textContent = buildProxyUrl(val);
+    }
+
+    // Basic URL checker
+    function isLikelyUrl(s) {
+      try { const u = new URL(s); return u.protocol === 'http:' || u.protocol === 'https:'; } catch(e){ return false; }
+    }
+
+    // Play function using Hls.js or native HLS support
+    async function playProxy(proxyUrl) {
+      if (!proxyUrl) return alert('Proxy URL missing');
+
+      // If browser supports native HLS (Safari), use direct src
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = proxyUrl;
+        try { await video.play(); } catch(e){ console.warn('Autoplay prevented'); }
+        return;
+      }
+
+      // Use Hls.js for other browsers
+      if (window.Hls) {
+        // destroy previous instance if any
+        if (window._hlsInst) {
+          try { window._hlsInst.destroy(); } catch(e){ /* ignore */ }
+          window._hlsInst = null;
+        }
+        const hls = new Hls();
+        window._hlsInst = hls;
+        hls.loadSource(proxyUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+          video.play().catch(()=>console.warn('Autoplay prevented'));
+        });
+        hls.on(Hls.Events.ERROR, function(evt, data){
+          console.warn('Hls error', data);
+          // show friendly message in console; server logs will have more details
+        });
+        return;
+      }
+
+      alert('Hls.js not loaded; include hls.js for non-Safari playback.');
+    }
+
+    // Hooks
+    manualInput.addEventListener('input', updatePreview);
+
+    useStoredBtn.addEventListener('click', () => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return alert('No stored URL found.');
+      manualInput.value = stored;
+      updatePreview();
+      alert('Stored URL loaded into input. Press Play via Proxy to start.');
+    });
+
+    playBtn.addEventListener('click', async () => {
+      const remote = manualInput.value.trim();
+      if (!remote) return alert('Paste or load a URL first.');
+      if (!isLikelyUrl(remote)) {
+        if (!confirm('Input does not look like a URL. Continue?')) return;
+      }
+      const proxy = buildProxyUrl(remote);
+      proxyPreview.textContent = proxy;
+      await playProxy(proxy);
+    });
+
+    copyBtn.addEventListener('click', () => {
+      const remote = manualInput.value.trim();
+      if (!remote) return alert('Paste or load a URL first.');
+      const proxy = location.origin + buildProxyUrl(remote);
+      navigator.clipboard.writeText(proxy).then(()=>alert('Proxy URL copied to clipboard'));
+    });
+
+    openBtn.addEventListener('click', () => {
+      const remote = manualInput.value.trim();
+      if (!remote) return alert('Paste or load a URL first.');
+      const proxy = buildProxyUrl(remote);
+      window.open(proxy, '_blank');
+    });
+
+    // Prefill from query param if present (e.g., generate.html -> bypass.html?url=...)
+    (function prefillFromQuery() {
+      const q = new URLSearchParams(window.location.search);
+      if (q.has('url')) {
+        const u = q.get('url');
+        if (u) manualInput.value = u;
+      }
+    })();
+
+    // Initialize
+    loadStored();
+  </script>
+</body>
+</html>
